@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Net Cash Cycle と 係数の関係</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #f5f6f8;
+    color: #1e2330;
+    min-height: 100vh;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #9ca3b4; margin-bottom: 32px; }
+  .chart-container {
+    background: #fff; border: 1px solid #dfe2e8; border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 40px 48px 32px 48px;
+    max-width: 860px; width: 100%;
+  }
+  canvas { width: 100%; height: auto; }
+  .legend { display: flex; gap: 24px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5a6278; }
+  .legend-swatch { width: 28px; height: 8px; border-radius: 2px; }
+  .annotations {
+    max-width: 860px; width: 100%; margin-top: 20px;
+    background: #fff; border: 1px solid #dfe2e8; border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 20px 28px;
+  }
+  .annotations h3 { font-size: 13px; font-weight: 500; color: #9ca3b4; margin-bottom: 12px; }
+  .anno-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.6; }
+  .anno-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 4px; white-space: nowrap; min-width: 110px; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>Net Cash Cycle と 資金拘束係数</h1>
+<p class="sub">係数 = max(0.5, 1.0 + (NCC − (−90)) / 180)　｜　基準点: NCC = −90日 → 係数 1.0</p>
+
+<div class="chart-container">
+  <canvas id="chart" width="760" height="420"></canvas>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#16a34a"></div>係数 0.5〜0.8</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#ca8a04"></div>係数 0.8〜1.5</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#ea580c"></div>係数 1.5〜2.5</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#dc2626"></div>係数 2.5〜</div>
+  </div>
+</div>
+
+<div class="annotations">
+  <h3>読み方</h3>
+  <div class="anno-row">
+    <span class="anno-badge" style="background:rgba(22,163,74,0.1);color:#16a34a">NCC ≤ −126日</span>
+    <span>入金が大幅に先行。係数0.5〜0.8。−180日以下は下限0.5で打ち止め。</span>
+  </div>
+  <div class="anno-row">
+    <span class="anno-badge" style="background:rgba(202,138,4,0.1);color:#ca8a04">NCC −126〜0日</span>
+    <span>標準的なサイクル。基準の−90日で係数1.0。0日で係数1.5。</span>
+  </div>
+  <div class="anno-row">
+    <span class="anno-badge" style="background:rgba(234,88,12,0.1);color:#ea580c">NCC 0〜+180日</span>
+    <span>支払いが先行し始める。係数1.5〜2.5。枠への影響が大きくなる。</span>
+  </div>
+  <div class="anno-row">
+    <span class="anno-badge" style="background:rgba(220,38,38,0.1);color:#dc2626">NCC +180日〜</span>
+    <span>要警戒。係数2.5以上、上限なし。枠を大幅に消費する。</span>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+canvas.width = 760 * dpr;
+canvas.height = 420 * dpr;
+ctx.scale(dpr, dpr);
+
+const W = 760, H = 420;
+const pad = { top: 28, right: 48, bottom: 52, left: 56 };
+const plotW = W - pad.left - pad.right;
+const plotH = H - pad.top - pad.bottom;
+
+const xMin = -220, xMax = 200;
+const yMin = 0, yMax = 3.2;
+
+function toX(v) { return pad.left + ((v - xMin) / (xMax - xMin)) * plotW; }
+function toY(v) { return pad.top + plotH - ((v - yMin) / (yMax - yMin)) * plotH; }
+function getCoeff(ncc) { return Math.max(0.5, 1.0 + (ncc - (-90)) / 180); }
+function getColor(c) {
+  if (c <= 0.8) return '#16a34a';
+  if (c <= 1.5) return '#ca8a04';
+  if (c <= 2.5) return '#ea580c';
+  return '#dc2626';
+}
+
+// Grid
+ctx.strokeStyle = '#eef0f4'; ctx.lineWidth = 1;
+for (let y = 0; y <= yMax; y += 0.5) {
+  ctx.beginPath(); ctx.moveTo(pad.left, toY(y)); ctx.lineTo(W - pad.right, toY(y)); ctx.stroke();
+}
+for (let x = xMin; x <= xMax; x += 30) {
+  ctx.beginPath(); ctx.moveTo(toX(x), pad.top); ctx.lineTo(toX(x), H - pad.bottom); ctx.stroke();
+}
+
+// NCC=0 vertical
+ctx.strokeStyle = '#d5d8df'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+ctx.beginPath(); ctx.moveTo(toX(0), pad.top); ctx.lineTo(toX(0), H - pad.bottom); ctx.stroke();
+ctx.setLineDash([]);
+
+// NCC=-90 vertical (center reference)
+ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+ctx.beginPath(); ctx.moveTo(toX(-90), pad.top); ctx.lineTo(toX(-90), H - pad.bottom); ctx.stroke();
+ctx.setLineDash([]);
+
+// 1.0 horizontal
+ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1; ctx.setLineDash([5, 4]);
+ctx.beginPath(); ctx.moveTo(pad.left, toY(1.0)); ctx.lineTo(W - pad.right, toY(1.0)); ctx.stroke();
+ctx.setLineDash([]);
+
+// Color zones
+const zones = [
+  { from: xMin, to: -126, color: 'rgba(22,163,74,0.05)' },
+  { from: -126, to: 0, color: 'rgba(202,138,4,0.05)' },
+  { from: 0, to: 180, color: 'rgba(234,88,12,0.05)' },
+  { from: 180, to: xMax, color: 'rgba(220,38,38,0.05)' },
+];
+zones.forEach(z => {
+  const l = Math.max(toX(z.from), pad.left);
+  const r = Math.min(toX(z.to), W - pad.right);
+  ctx.fillStyle = z.color;
+  ctx.fillRect(l, pad.top, r - l, plotH);
+});
+
+// Main line
+const step = 1;
+for (let ncc = xMin; ncc < xMax; ncc += step) {
+  const c1 = getCoeff(ncc), c2 = getCoeff(ncc + step);
+  if (toY(c1) < pad.top && toY(c2) < pad.top) continue;
+  ctx.strokeStyle = getColor((c1 + c2) / 2);
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(toX(ncc), toY(c1)); ctx.lineTo(toX(ncc + step), toY(c2)); ctx.stroke();
+}
+
+// Clamp dashed for lower bound
+ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]); ctx.globalAlpha = 0.5;
+ctx.strokeStyle = '#16a34a';
+ctx.beginPath(); ctx.moveTo(toX(xMin), toY(0.5)); ctx.lineTo(toX(-180), toY(0.5)); ctx.stroke();
+ctx.setLineDash([]); ctx.globalAlpha = 1;
+
+// Arrow at right edge indicating no upper limit
+ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2; ctx.globalAlpha = 0.6;
+const arrowX = W - pad.right - 4;
+const arrowY = pad.top + 8;
+ctx.beginPath(); ctx.moveTo(arrowX - 12, arrowY + 8); ctx.lineTo(arrowX, arrowY); ctx.lineTo(arrowX - 12, arrowY - 0); ctx.stroke();
+ctx.globalAlpha = 1;
+ctx.fillStyle = '#dc2626'; ctx.font = "500 10px 'JetBrains Mono', monospace";
+ctx.textAlign = 'right'; ctx.fillText('上限なし', arrowX - 14, arrowY + 4);
+
+// Key points
+const keyPoints = [-180, -135, -90, -45, 0, 90, 180];
+keyPoints.forEach(ncc => {
+  const c = getCoeff(ncc);
+  if (c > yMax) return;
+  const x = toX(ncc), y = toY(c);
+  ctx.fillStyle = getColor(c);
+  ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1e2330';
+  ctx.font = "600 11px 'JetBrains Mono', monospace";
+  ctx.textAlign = 'center';
+  ctx.fillText(c.toFixed(2), x, y - 12);
+});
+
+// X axis labels
+ctx.fillStyle = '#5a6278';
+ctx.font = "400 11px 'Noto Sans JP', sans-serif";
+ctx.textAlign = 'center';
+for (let x = xMin; x <= xMax; x += 30) {
+  if (x % 60 === 0 || x === -90 || x === -30 || x === 30) {
+    ctx.fillText(x + '日', toX(x), H - pad.bottom + 22);
+  }
+}
+ctx.font = "400 12px 'Noto Sans JP', sans-serif";
+ctx.fillText('Net Cash Cycle（日）', pad.left + plotW / 2, H - 4);
+
+// Y axis labels
+ctx.textAlign = 'right';
+ctx.font = "400 11px 'JetBrains Mono', monospace";
+for (let y = 0; y <= yMax; y += 0.5) {
+  ctx.fillStyle = '#5a6278';
+  ctx.fillText(y.toFixed(1), pad.left - 10, toY(y) + 4);
+}
+ctx.save();
+ctx.translate(14, pad.top + plotH / 2);
+ctx.rotate(-Math.PI / 2);
+ctx.textAlign = 'center';
+ctx.font = "400 12px 'Noto Sans JP', sans-serif";
+ctx.fillText('資金拘束係数', 0, 0);
+ctx.restore();
+
+// Center point label
+ctx.fillStyle = '#3b82f6';
+ctx.font = "500 11px 'Noto Sans JP', sans-serif";
+ctx.textAlign = 'center';
+ctx.fillText('基準 −90日', toX(-90), H - pad.bottom + 40);
+
+// 1.0 label
+ctx.fillStyle = '#3b82f6';
+ctx.font = "400 11px 'JetBrains Mono', monospace";
+ctx.textAlign = 'left';
+ctx.fillText('1.0', W - pad.right + 6, toY(1.0) + 4);
+
+// Direction labels
+ctx.fillStyle = '#9ca3b4';
+ctx.font = "400 11px 'Noto Sans JP', sans-serif";
+ctx.textAlign = 'center';
+ctx.fillText('← 入金が先（有利）', toX(-150), pad.top + 14);
+ctx.fillText('支払いが先（不利） →', toX(100), pad.top + 14);
+</script>
+</body>
+</html>

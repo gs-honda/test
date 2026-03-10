@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>資金拘束スコア計算</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #f0f1f4;
+    --border: #dfe2e8;
+    --border-focus: #3b82f6;
+    --text: #1e2330;
+    --text-dim: #5a6278;
+    --text-muted: #9ca3b4;
+    --accent: #3b82f6;
+    --accent-dim: rgba(59, 130, 246, 0.08);
+    --green: #16a34a;
+    --green-dim: rgba(22, 163, 74, 0.08);
+    --yellow: #ca8a04;
+    --yellow-dim: rgba(202, 138, 4, 0.08);
+    --red: #dc2626;
+    --red-dim: rgba(220, 38, 38, 0.08);
+    --orange: #ea580c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .header {
+    max-width: 1400px;
+    margin: 0 auto 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+  }
+
+  .header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .header .sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 300;
+  }
+
+  .budget-bar {
+    max-width: 1400px;
+    margin: 0 auto 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .budget-bar label {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+
+  .budget-bar input {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    width: 180px;
+    text-align: right;
+    transition: border-color 0.2s;
+  }
+
+  .budget-bar input:focus {
+    outline: none;
+    border-color: var(--border-focus);
+  }
+
+  .budget-summary {
+    margin-left: auto;
+    display: flex;
+    gap: 32px;
+    align-items: center;
+  }
+
+  .budget-stat {
+    text-align: right;
+  }
+
+  .budget-stat .label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+  }
+
+  .budget-stat .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .budget-meter {
+    width: 200px;
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .budget-meter-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease, background 0.4s ease;
+  }
+
+  .table-wrapper {
+    max-width: 1400px;
+    margin: 0 auto;
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1100px;
+  }
+
+  thead th {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 14px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    white-space: nowrap;
+  }
+
+  thead th:first-child,
+  thead th:nth-child(2) {
+    text-align: left;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  tbody tr:hover {
+    background: rgba(59, 130, 246, 0.04);
+  }
+
+  tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  td {
+    padding: 10px 12px;
+    vertical-align: middle;
+  }
+
+  .row-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    width: 36px;
+    text-align: center;
+  }
+
+  td input {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 7px 10px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    width: 100%;
+    text-align: right;
+    transition: all 0.15s;
+  }
+
+  td input.name-input {
+    font-family: 'Noto Sans JP', sans-serif;
+    text-align: left;
+    font-size: 13px;
+  }
+
+  td input:hover {
+    border-color: var(--border);
+    background: var(--surface-2);
+  }
+
+  td input:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    background: var(--surface-2);
+    box-shadow: 0 0 0 2px var(--accent-dim);
+  }
+
+  td input::placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .calc-cell {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    text-align: right;
+    padding-right: 10px;
+    white-space: nowrap;
+  }
+
+  .score-cell {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: right;
+    padding-right: 16px;
+  }
+
+  .weighted-cell {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    text-align: right;
+    padding-right: 16px;
+  }
+
+  .score-low { color: var(--green); }
+  .score-mid { color: var(--yellow); }
+  .score-high { color: var(--orange); }
+  .score-critical { color: var(--red); }
+
+  .bar-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .mini-bar {
+    width: 60px;
+    height: 4px;
+    background: var(--surface-2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .mini-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  .formula-panel {
+    max-width: 1400px;
+    margin: 24px auto 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .formula-panel h3 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  .formula {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 10px 16px;
+    border-radius: 6px;
+    display: inline-block;
+    line-height: 1.8;
+  }
+
+  .formula-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    line-height: 1.7;
+  }
+
+  .col-name { width: 160px; }
+  .col-num { width: 36px; }
+  .col-input { width: 100px; }
+  .col-calc { width: 110px; }
+  .col-score { width: 90px; }
+
+  @media (max-width: 768px) {
+    body { padding: 12px; }
+    .budget-bar { flex-direction: column; align-items: stretch; gap: 12px; }
+    .budget-summary { margin-left: 0; justify-content: space-between; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>資金拘束スコア</h1>
+  <span class="sub">Capital Commitment Score Calculator</span>
+</div>
+
+<div class="budget-bar">
+  <div>
+    <label>発注枠上限（円）</label><br>
+    <input type="text" id="budgetInput" value="3,000,000" oninput="onBudgetChange(this)">
+  </div>
+  <div class="budget-summary">
+    <div class="budget-stat">
+      <div class="label">加重合計</div>
+      <div class="value" id="totalWeighted" style="color: var(--text)">¥0</div>
+    </div>
+    <div class="budget-stat">
+      <div class="label">消化率</div>
+      <div class="value" id="usagePercent" style="color: var(--text)">0%</div>
+    </div>
+    <div>
+      <div class="budget-meter">
+        <div class="budget-meter-fill" id="budgetMeter" style="width: 0%; background: var(--green);"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th class="col-num">#</th>
+        <th class="col-name">商品名</th>
+        <th class="col-input">上代（円）</th>
+        <th class="col-input">仕入率（%）</th>
+        <th class="col-input">発注→納品<br>（日）</th>
+        <th class="col-input">納品→支払<br>（日）</th>
+        <th class="col-input">発注→受注<br>（日）</th>
+        <th class="col-input">受注→入金<br>（日）</th>
+        <th class="col-input">発注数</th>
+        <th class="col-calc">原価合計</th>
+        <th class="col-calc">粗利率</th>
+        <th class="col-calc">Net Cash<br>Cycle（日）</th>
+        <th class="col-score">係数</th>
+        <th class="col-calc">加重額（円）</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<div class="formula-panel">
+  <h3>計算ロジック</h3>
+  <div class="formula">
+    発注→支払日数 = 発注→納品日数 + 納品→支払日数<br>
+    Net Cash Cycle = (発注→受注日数 + 受注→入金日数) − 発注→支払日数<br>
+    係数 = max(0.5, 1.0 + (NCC − (−90)) / 180)　※上限なし<br>
+    加重額 = 原価合計 × 係数
+  </div>
+  <div class="formula-note">
+    基準点: NCC = −90日 → 係数 1.0（事業の標準的なキャッシュサイクル）<br>
+    係数 0.5〜0.8（緑）＝ NCC −180〜−126日。非常に有利な条件。下限0.5。<br>
+    係数 0.8〜1.5（黄）＝ NCC −126〜0日。標準〜やや不利。<br>
+    係数 1.5〜2.5（橙）＝ NCC 0〜+180日。資金拘束が重い。<br>
+    係数 2.5〜  （赤）＝ NCC +180日超。要警戒。上限なし。
+  </div>
+</div>
+
+<script>
+const ROWS = 10;
+const CENTER_NCC = -90;   // 基準点: NCC=-90日で係数1.0
+const MIN_COEFF = 0.5;    // 下限: NCC=-180日で0.5
+const SLOPE = 1 / 180;    // 傾き: 180日あたり係数1.0変動
+
+let budget = 3000000;
+
+function initTable() {
+  const tbody = document.getElementById('tableBody');
+  for (let i = 0; i < ROWS; i++) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="row-num">${i + 1}</td>
+      <td><input class="name-input" type="text" data-row="${i}" data-field="name" placeholder="商品名を入力"></td>
+      <td><input type="text" data-row="${i}" data-field="price" placeholder="0"></td>
+      <td><input type="text" data-row="${i}" data-field="costRate" placeholder="0"></td>
+      <td><input type="text" data-row="${i}" data-field="leadDays" placeholder="0"></td>
+      <td><input type="text" data-row="${i}" data-field="payDays" placeholder="0"></td>
+      <td><input type="text" data-row="${i}" data-field="orderDays" placeholder="0"></td>
+      <td><input type="text" data-row="${i}" data-field="collectDays" placeholder="0"></td>
+      <td><input type="text" data-row="${i}" data-field="qty" placeholder="0"></td>
+      <td class="calc-cell" id="totalCost_${i}">-</td>
+      <td class="calc-cell" id="margin_${i}">-</td>
+      <td class="calc-cell" id="netCycle_${i}">-</td>
+      <td class="score-cell" id="coeff_${i}">-</td>
+      <td class="weighted-cell" id="weighted_${i}">-</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  tbody.addEventListener('input', (e) => {
+    if (e.target.tagName === 'INPUT') recalc();
+  });
+}
+
+function getVal(row, field) {
+  const el = document.querySelector(`input[data-row="${row}"][data-field="${field}"]`);
+  if (!el) return 0;
+  return parseFloat(el.value.replace(/,/g, '')) || 0;
+}
+
+function formatNum(n) {
+  if (isNaN(n) || !isFinite(n)) return '-';
+  return Math.round(n).toLocaleString('ja-JP');
+}
+
+function recalc() {
+  let totalWeighted = 0;
+  let maxCoeff = 0;
+
+  for (let i = 0; i < ROWS; i++) {
+    const price = getVal(i, 'price');
+    const costRate = getVal(i, 'costRate');
+    const leadDays = getVal(i, 'leadDays');
+    const payDays = getVal(i, 'payDays');
+    const orderDays = getVal(i, 'orderDays');
+    const collectDays = getVal(i, 'collectDays');
+    const qty = getVal(i, 'qty');
+
+    const costEl = document.getElementById(`totalCost_${i}`);
+    const marginEl = document.getElementById(`margin_${i}`);
+    const cycleEl = document.getElementById(`netCycle_${i}`);
+    const coeffEl = document.getElementById(`coeff_${i}`);
+    const weightedEl = document.getElementById(`weighted_${i}`);
+
+    if (price === 0 || costRate === 0 || qty === 0) {
+      costEl.textContent = '-';
+      marginEl.textContent = '-';
+      cycleEl.textContent = '-';
+      coeffEl.textContent = '-';
+      coeffEl.className = 'score-cell';
+      weightedEl.textContent = '-';
+      continue;
+    }
+
+    const unitCost = price * (costRate / 100);
+    const totalCost = unitCost * qty;
+    const marginRate = ((price - unitCost) / price) * 100;
+    const netCycle = (orderDays + collectDays) - (leadDays + payDays);
+    const rawCoeff = 1.0 + (netCycle - CENTER_NCC) * SLOPE;
+    const coeff = Math.max(MIN_COEFF, rawCoeff);
+    const weighted = totalCost * coeff;
+
+    costEl.textContent = '¥' + formatNum(totalCost);
+    marginEl.textContent = marginRate.toFixed(1) + '%';
+
+    cycleEl.textContent = netCycle + '日';
+    cycleEl.style.color = netCycle <= -120 ? 'var(--green)' : netCycle <= -60 ? 'var(--text)' : netCycle <= 0 ? 'var(--yellow)' : 'var(--red)';
+
+    let scoreClass = 'score-cell ';
+    if (coeff <= 0.8) scoreClass += 'score-low';
+    else if (coeff <= 1.5) scoreClass += 'score-mid';
+    else if (coeff <= 2.5) scoreClass += 'score-high';
+    else scoreClass += 'score-critical';
+    coeffEl.className = scoreClass;
+    coeffEl.textContent = coeff.toFixed(2);
+
+    weightedEl.textContent = '¥' + formatNum(weighted);
+    weightedEl.style.color = coeff <= 0.8 ? 'var(--green)' : coeff <= 1.5 ? 'var(--yellow)' : 'var(--red)';
+
+    totalWeighted += weighted;
+    if (coeff > maxCoeff) maxCoeff = coeff;
+  }
+
+  const totalEl = document.getElementById('totalWeighted');
+  const percentEl = document.getElementById('usagePercent');
+  const meterEl = document.getElementById('budgetMeter');
+
+  totalEl.textContent = '¥' + formatNum(totalWeighted);
+  const pct = budget > 0 ? (totalWeighted / budget) * 100 : 0;
+  percentEl.textContent = pct.toFixed(1) + '%';
+
+  let color;
+  if (pct <= 60) color = 'var(--green)';
+  else if (pct <= 85) color = 'var(--yellow)';
+  else if (pct <= 100) color = 'var(--orange)';
+  else color = 'var(--red)';
+
+  totalEl.style.color = color;
+  percentEl.style.color = color;
+  meterEl.style.width = Math.min(pct, 100) + '%';
+  meterEl.style.background = color;
+}
+
+function onBudgetChange(el) {
+  const raw = el.value.replace(/,/g, '');
+  budget = parseFloat(raw) || 0;
+  recalc();
+}
+
+initTable();
+</script>
+</body>
+</html>
