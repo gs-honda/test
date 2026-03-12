@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>発注ポイント制 運用ガイド</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1a1a2e;
+  --ink-light: #4a4a6a;
+  --ink-faint: #9494aa;
+  --bg: #fafaf8;
+  --paper: #ffffff;
+  --rule: #e8e8e0;
+  --accent: #2856a3;
+  --accent-light: #eaf0fa;
+  --accent-pale: #f4f7fc;
+  --green: #1a7a4a;
+  --green-light: #e8f5ee;
+  --orange: #c47a1a;
+  --orange-light: #fef5e8;
+  --red: #b33a3a;
+  --red-light: #fceaea;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.85;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ======= Page structure ======= */
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--paper);
+  min-height: 100vh;
+}
+
+/* ======= Cover ======= */
+.cover {
+  padding: 80px 48px 60px;
+  border-bottom: 3px solid var(--ink);
+  position: relative;
+}
+.cover::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 0; right: 0;
+  height: 1px;
+  background: var(--ink);
+}
+.cover .label {
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 24px;
+}
+.cover h1 {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-bottom: 16px;
+  letter-spacing: -0.5px;
+}
+.cover .subtitle {
+  font-size: 16px;
+  color: var(--ink-light);
+  line-height: 1.7;
+}
+.cover .meta {
+  margin-top: 32px;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+/* ======= Content ======= */
+.content {
+  padding: 48px;
+}
+
+/* Section */
+.section {
+  margin-bottom: 56px;
+}
+.section-num {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.section h2 {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.section h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 28px 0 12px;
+  color: var(--ink);
+}
+
+p { margin-bottom: 16px; }
+p:last-child { margin-bottom: 0; }
+
+/* Emphasis box */
+.box {
+  padding: 20px 24px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+.box-accent { background: var(--accent-pale); border-left: 3px solid var(--accent); }
+.box-green { background: var(--green-light); border-left: 3px solid var(--green); }
+.box-orange { background: var(--orange-light); border-left: 3px solid var(--orange); }
+.box-red { background: var(--red-light); border-left: 3px solid var(--red); }
+
+.box .box-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.box-accent .box-title { color: var(--accent); }
+.box-green .box-title { color: var(--green); }
+.box-orange .box-title { color: var(--orange); }
+.box-red .box-title { color: var(--red); }
+
+/* Flow diagram */
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 24px 0;
+}
+.flow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  position: relative;
+  padding-bottom: 24px;
+}
+.flow-step:last-child { padding-bottom: 0; }
+.flow-step::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 36px;
+  bottom: 0;
+  width: 2px;
+  background: var(--rule);
+}
+.flow-step:last-child::before { display: none; }
+.flow-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.flow-body {
+  flex: 1;
+  padding-top: 6px;
+}
+.flow-body strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.flow-body p {
+  font-size: 14px;
+  color: var(--ink-light);
+  margin-bottom: 0;
+}
+
+/* Simple table */
+.simple-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 14px;
+}
+.simple-tbl th {
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--accent-pale);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--accent);
+}
+.simple-tbl th.num { text-align: right; }
+.simple-tbl td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+}
+.simple-tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.simple-tbl tr:last-child td { border-bottom: 2px solid var(--rule); }
+.simple-tbl .highlight { background: var(--orange-light); font-weight: 500; }
+
+/* Coefficient visual */
+.coeff-example {
+  display: flex;
+  gap: 12px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+.coeff-card {
+  flex: 1;
+  min-width: 140px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--rule);
+  text-align: center;
+}
+.coeff-card .coeff-val {
+  font-size: 28px;
+  font-weight: 900;
+  margin-bottom: 4px;
+}
+.coeff-card .coeff-label {
+  font-size: 12px;
+  color: var(--ink-light);
+}
+.coeff-card.c0 { border-color: var(--green); }
+.coeff-card.c0 .coeff-val { color: var(--green); }
+.coeff-card.c1 { border-color: var(--accent); }
+.coeff-card.c1 .coeff-val { color: var(--accent); }
+.coeff-card.c2 { border-color: var(--orange); }
+.coeff-card.c2 .coeff-val { color: var(--orange); }
+.coeff-card.c3 { border-color: var(--red); }
+.coeff-card.c3 .coeff-val { color: var(--red); }
+
+/* Screenshot placeholder */
+.screenshot {
+  margin: 24px 0;
+  padding: 20px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  text-align: center;
+}
+.screenshot img {
+  max-width: 100%;
+  border-radius: 4px;
+}
+.screenshot .caption {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 8px;
+}
+
+/* Formula */
+.formula {
+  background: var(--ink);
+  color: #fff;
+  padding: 16px 24px;
+  border-radius: 8px;
+  margin: 20px 0;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+.formula .eq { font-size: 18px; }
+
+/* Inline tag */
+.tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.tag-blue { background: var(--accent-light); color: var(--accent); }
+.tag-green { background: var(--green-light); color: var(--green); }
+.tag-orange { background: var(--orange-light); color: var(--orange); }
+.tag-red { background: var(--red-light); color: var(--red); }
+
+/* FAQ */
+.faq {
+  margin: 20px 0;
+}
+.faq-item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.faq-q {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.faq-q::before {
+  content: 'Q.';
+  color: var(--accent);
+  margin-right: 8px;
+}
+.faq-a {
+  font-size: 14px;
+  color: var(--ink-light);
+  padding-left: 28px;
+}
+
+/* Print */
+@media print {
+  body { background: #fff; }
+  .page { box-shadow: none; }
+  .cover { padding: 40px 32px 32px; }
+  .content { padding: 32px; }
+}
+
+@media (max-width: 640px) {
+  .cover { padding: 48px 24px 40px; }
+  .cover h1 { font-size: 26px; }
+  .content { padding: 28px 20px; }
+  .coeff-example { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ======= COVER ======= -->
+  <div class="cover">
+    <div class="label">Operations Guide</div>
+    <h1>発注ポイント制<br>運用ガイド</h1>
+    <p class="subtitle">
+      発注の判断を担当者に委ねつつ、<br>
+      在庫リスクを「数字」で共有するための仕組みです。
+    </p>
+    <p class="meta">社内資料 ─ 2026年4月〜</p>
+  </div>
+
+  <div class="content">
+
+    <!-- ======= SECTION 1: 背景 ======= -->
+    <div class="section">
+      <div class="section-num">SECTION 01</div>
+      <h2>なぜポイント制を導入するのか</h2>
+
+      <p>
+        これまで発注は都度承認のフローで行ってきましたが、スピードと担当者の裁量にボトルネックが生じていました。
+        今回のポイント制は、<strong>3つの目的</strong>を持って導入します。
+      </p>
+
+      <div class="box box-accent">
+        <div class="box-title">① 担当者が自分で判断できるようにする</div>
+        <p>
+          発注のたびに承認を取るのではなく、ポイント枠の範囲内であれば担当者の判断で発注できる仕組みにします。「枠の中で自由に、枠を超えるときだけ相談」というシンプルなルールです。
+        </p>
+      </div>
+
+      <div class="box box-green">
+        <div class="box-title">② 共通の数字ルールを持つ</div>
+        <p>
+          「なんとなく多い」「感覚的に大丈夫」ではなく、在庫リスクを数値化して全員が同じ基準で判断できるようにします。ポイントという共通言語があれば、発注会議の議論も具体的になります。
+        </p>
+      </div>
+
+      <div class="box box-orange">
+        <div class="box-title">③ キャッシュフロー経営の感覚を身につける</div>
+        <p>
+          在庫は「お金が商品に姿を変えて棚に並んでいる状態」です。売れなければお金は戻ってこない。この感覚を数字で体感することで、一人ひとりがキャッシュフローを意識した判断ができるようになることを目指しています。
+        </p>
+      </div>
+    </div>
+
+    <!-- ======= SECTION 2: ポイントの考え方 ======= -->
+    <div class="section">
+      <div class="section-num">SECTION 02</div>
+      <h2>ポイントの考え方</h2>
+
+      <h3>基本の式</h3>
+
+      <div class="formula">
+        <span class="eq">ポイント消費 ＝ 数量 × 原価 × 係数</span>
+      </div>
+
+      <p>
+        ポイントは<strong>「在庫リスクの重さ」</strong>を数値化したものです。同じ金額の在庫でも、すぐ売れる見込みがあるものと、売れるまでに時間がかかるものではリスクが違います。その差を<strong>「係数」</strong>で表現します。
+      </p>
+
+      <h3>係数の決まり方</h3>
+
+      <p>
+        係数は<strong>2つのルール</strong>で決まります。
+      </p>
+
+      <p>
+        <strong>ルール①：発注日と受注開始日の差</strong><br>
+        発注してから実際に売り始めるまでの期間が長いほど、初期係数が大きくなります。
+      </p>
+
+      <div class="coeff-example">
+        <div class="coeff-card c0">
+          <div class="coeff-val">0</div>
+          <div class="coeff-label">受注発注<br>（リスクなし）</div>
+        </div>
+        <div class="coeff-card c1">
+          <div class="coeff-val">1</div>
+          <div class="coeff-label">発注月＝<br>受注開始月</div>
+        </div>
+        <div class="coeff-card c2">
+          <div class="coeff-val">2</div>
+          <div class="coeff-label">発注の<br>翌月から販売</div>
+        </div>
+        <div class="coeff-card c3">
+          <div class="coeff-val">3</div>
+          <div class="coeff-label">発注の<br>翌々月から販売</div>
+        </div>
+      </div>
+
+      <p>
+        <strong>ルール②：発注済み在庫は毎月+1</strong><br>
+        発注から1ヶ月経つごとに係数が1ずつ増えていきます。つまり、売れ残っている在庫は時間が経つほどポイントを多く消費します。
+      </p>
+
+      <div class="box box-accent">
+        <div class="box-title">具体例</div>
+        <p>
+          4月に発注、6月から販売開始のバッグ（原価¥3,500 × 40個）の場合：
+        </p>
+      </div>
+
+      <table class="simple-tbl">
+        <thead>
+          <tr><th>月</th><th class="num">係数</th><th>理由</th><th class="num">残在庫</th><th class="num">ポイント消費</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>4月（発注月）</td><td class="num">3</td><td>翌々月販売 → 初期係数3</td><td class="num">40個</td><td class="num">420,000</td></tr>
+          <tr><td>5月</td><td class="num">4</td><td>3 + 1ヶ月経過</td><td class="num">40個</td><td class="num">560,000</td></tr>
+          <tr class="highlight"><td>6月（販売開始）</td><td class="num">5</td><td>3 + 2ヶ月経過</td><td class="num">37個</td><td class="num">647,500</td></tr>
+          <tr><td>7月</td><td class="num">6</td><td>3 + 3ヶ月経過</td><td class="num">32個</td><td class="num">672,000</td></tr>
+          <tr><td>8月</td><td class="num">7</td><td>3 + 4ヶ月経過</td><td class="num">28個</td><td class="num">686,000</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        このように、<strong>早く売れれば在庫が減って係数の影響も減り</strong>、ポイント消費が下がっていきます。逆に売れなければ、係数が増え続けてポイントがどんどん膨らみます。
+      </p>
+
+      <h3>受注発注品は係数ゼロ</h3>
+      <p>
+        注文が入ってから発注する商品は、在庫リスクがないので係数は常に<span class="tag tag-green">0</span>です。ポイントを一切消費しません。受注発注を増やすことは、枠を有効活用する最も確実な方法です。
+      </p>
+
+      <h3>受注が入ると枠が解放される</h3>
+      <p>
+        商品が売れた分だけ在庫が減り、ポイントが解放されます。同じ商品で複数回発注がある場合は、<strong>古い発注分から先に消化</strong>（先入れ先出し）されます。古いもの＝係数が高いものが先になくなるので、効率よく枠が空いていきます。
+      </p>
+    </div>
+
+    <!-- ======= SECTION 3: 発注時のフロー ======= -->
+    <div class="section">
+      <div class="section-num">SECTION 03</div>
+      <h2>発注するときのフロー</h2>
+
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div class="flow-body">
+            <strong>ポイント確認画面で現在の消費状況を確認</strong>
+            <p>ブラウザでポイント確認用HTMLを開き、「データ取得」ボタンでスプレッドシートから最新データを読み込みます。現在の枠消費率を確認してください。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div class="flow-body">
+            <strong>発注したい商品のポイントを試算する</strong>
+            <p>数量 × 原価 × 係数 で、その発注がどれだけ枠を消費するかを計算します。係数は発注日→受注開始日の差から決まります。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div class="flow-body">
+            <strong>枠内であればそのまま発注</strong>
+            <p>現在の消費ポイント＋新規発注ポイントが総枠以内なら、担当者の判断で発注してOKです。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">4</div>
+          <div class="flow-body">
+            <strong>スプレッドシートの商品マスタに記録</strong>
+            <p>発注したら「商品マスタ」シートに1行追加してください。商品名・タイプ（stock/mto）・発注日・受注開始日・数量・原価の6項目です。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="box box-red">
+        <div class="box-title">枠を超えそうな場合</div>
+        <p>
+          消費率が<strong>70%を超えている</strong>場合は、追加発注の前に一度相談してください。特に係数が高くなる発注（発注→販売開始まで2ヶ月以上空くもの）は枠への影響が大きいので、本当に必要かどうか慎重に判断しましょう。
+        </p>
+      </div>
+    </div>
+
+    <!-- ======= SECTION 4: 受注実績の入力フロー ======= -->
+    <div class="section">
+      <div class="section-num">SECTION 04</div>
+      <h2>毎月の受注実績の入力</h2>
+
+      <p>
+        ポイント制が正しく機能するために、<strong>毎月の受注実績の入力</strong>が必要です。これによって在庫が減り、ポイントが解放されます。
+      </p>
+
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div class="flow-body">
+            <strong>月初にスプレッドシートの「受注実績」シートを開く</strong>
+            <p>
+              <a href="https://docs.google.com/spreadsheets/d/1YBSqibE0XMrDmO6Pv1fPdnKopwCwtFedjfMDLE-wBH4/edit?gid=132741412#gid=132741412" target="_blank" style="color:var(--accent)">スプレッドシートを開く ↗</a>
+            </p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div class="flow-body">
+            <strong>前月の受注数を、商品ごとに入力する</strong>
+            <p>行が商品名、列が月です。該当するセルに前月の受注数量を入れてください。受注発注品（mto）は入力不要です。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div class="flow-body">
+            <strong>ポイント確認画面で「データ取得」を押して確認</strong>
+            <p>入力が反映されると、在庫残とポイント消費が更新されます。予測値だった月が実績に切り替わります。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="box box-green">
+        <div class="box-title">入力のポイント</div>
+        <p>
+          入力は<strong>商品名×月単位</strong>で大丈夫です。同じ商品に複数の発注ロットがある場合も、受注数は商品名でまとめて入力してください。システム側で古いロットから自動的に消化します（先入れ先出し）。
+        </p>
+      </div>
+    </div>
+
+    <!-- ======= SECTION 5: HTML の使い方 ======= -->
+    <div class="section">
+      <div class="section-num">SECTION 05</div>
+      <h2>ポイント確認画面の使い方</h2>
+
+      <p>
+        ブラウザで下記URLを開いてください。
+      </p>
+
+      <div class="box box-accent">
+        <div class="box-title">ポイント確認画面URL</div>
+        <p>
+          <a href="https://gs-honda.github.io/test/ocs-ver0.html" target="_blank" style="color:var(--accent);word-break:break-all;">
+            https://gs-honda.github.io/test/ocs-ver0.html
+          </a>
+        </p>
+      </div>
+
+      <h3>Step 1：データ取得</h3>
+      <p>
+        画面上部の「GAS Web App URL」欄に下記URLを入力（またはブックマーク済みなら自動入力）して、<span class="tag tag-blue">データ取得</span>ボタンを押します。
+      </p>
+      <div class="box box-accent" style="font-size:13px; word-break:break-all;">
+        <code>https://script.google.com/macros/s/AKfycbyyozxWhZ7hquBak8i6K6BvAqfkT-mziaEitOrOsUkFBQfzsEEED8YAwTJPNrurH0fnoA/exec</code>
+      </div>
+      <p>
+        スプレッドシートから最新の商品マスタ・受注実績・設定データが読み込まれます。
+      </p>
+
+      <h3>Step 2：全体状況を把握する</h3>
+      <p>
+        画面上部のゲージで、現在の枠消費状況と12ヶ月後の予測をすぐに把握できます。
+      </p>
+      <table class="simple-tbl">
+        <thead>
+          <tr><th>表示</th><th>意味</th><th>目安</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>消費率 <span class="tag tag-green">〜70%</span></td>
+            <td>余裕あり</td>
+            <td>通常の発注判断でOK</td>
+          </tr>
+          <tr>
+            <td>消費率 <span class="tag tag-orange">70〜90%</span></td>
+            <td>注意</td>
+            <td>大きな発注は相談推奨</td>
+          </tr>
+          <tr>
+            <td>消費率 <span class="tag tag-red">90%超</span></td>
+            <td>警戒</td>
+            <td>追加発注は原則ストップ</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Step 3：月次チャートで推移を確認</h3>
+      <p>
+        チャートの<strong>青い線</strong>がポイント消費（加重値）の推移です。実績がある月は実線、まだ先の月は過去の平均受注で予測した点線で表示されます。赤い点線が発注枠の上限ラインです。
+      </p>
+      <p>
+        青い線が赤い点線に近づいているなら、受注を加速させるか、新規発注を抑える必要があります。
+      </p>
+
+      <h3>Step 4：月次テーブルで詳細確認</h3>
+      <p>
+        テーブルでは各月の数値を確認できます。「データ」列で<span class="tag tag-green">実績</span>と<span class="tag tag-orange">予測</span>が区別されています。実績月が増えるほど予測精度も上がっていきます。
+      </p>
+
+      <h3>Step 5：商品別の状況確認</h3>
+      <p>
+        画面下部の「商品マスタ＆受注実績」テーブルで、商品ごとの初期係数・受注済み数・残在庫を確認できます。残在庫が多い商品は販促を強化する、次回の発注数を減らすなどの判断材料にしてください。
+      </p>
+    </div>
+
+    <!-- ======= SECTION 6: FAQ ======= -->
+    <div class="section">
+      <div class="section-num">SECTION 06</div>
+      <h2>よくある質問</h2>
+
+      <div class="faq">
+        <div class="faq-item">
+          <div class="faq-q">発注枠の総量はどうやって決まるのですか？</div>
+          <div class="faq-a">キャッシュフローの状況を踏まえて設定しています。設定シートの「発注枠（万円）」の値です。必要に応じて見直します。</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">受注実績の入力を忘れるとどうなりますか？</div>
+          <div class="faq-a">在庫が減らないので、ポイント消費が実態より高く表示されます。実際のリスクが過大評価される方向なので安全側ですが、正しい判断のためにも毎月の入力をお願いします。</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">同じ商品を追加発注したらどうなりますか？</div>
+          <div class="faq-a">商品マスタに新しい行として追加してください。受注実績は商品名単位で入力すればOKです。古い発注分から先に在庫消化されます。</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">係数が高い＝悪いことですか？</div>
+          <div class="faq-a">必ずしもそうではありません。季節商品は発注→販売開始の差が大きくなるので係数が高くなりがちです。大事なのは「係数を理解した上で発注する」ことです。</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">ポイント確認画面のデータが古い気がします</div>
+          <div class="faq-a">「データ取得」ボタンを押すたびにスプレッドシートから最新データを読みます。スプシの内容を更新したあとに取得し直してください。</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
