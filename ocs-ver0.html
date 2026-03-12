@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>発注枠シミュレーター</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface2: #f0f1f4;
+  --border: #dfe1e8;
+  --text: #1e2130;
+  --text-dim: #6b7084;
+  --accent: #3b6ee6;
+  --accent-dim: #e8effc;
+  --danger: #e04545;
+  --danger-dim: #fdeaea;
+  --warn: #d98e1f;
+  --warn-dim: #fdf3e0;
+  --success: #2a9d60;
+  --success-dim: #e6f7ee;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.app { max-width: 1280px; margin: 0 auto; padding: 24px 20px; }
+.header { margin-bottom: 32px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+.header-left h1 { font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+.header-left p { font-size: 13px; color: var(--text-dim); }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.panel-title {
+  font-size: 14px; font-weight: 500; color: var(--text-dim);
+  margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* Connection */
+.connect-bar {
+  display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+}
+.connect-bar .field { flex: 1; min-width: 280px; }
+.connect-bar label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+.connect-bar input {
+  width: 100%; padding: 8px 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.connect-bar input:focus { outline: none; border-color: var(--accent); }
+
+.btn {
+  padding: 8px 20px; border: none; border-radius: 8px;
+  font-size: 13px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif;
+  transition: all 0.15s; white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #5580e8; }
+.btn-primary:disabled { background: var(--border); color: var(--text-dim); cursor: not-allowed; }
+.btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+.btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
+
+.status-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 20px; font-size: 12px;
+}
+.status-ok { background: var(--success-dim); color: var(--success); }
+.status-err { background: var(--danger-dim); color: var(--danger); }
+.status-loading { background: var(--accent-dim); color: var(--accent); }
+
+/* Config summary */
+.config-summary {
+  display: flex; gap: 24px; flex-wrap: wrap; margin-top: 12px;
+  padding-top: 12px; border-top: 1px solid var(--border);
+}
+.config-summary .item { font-size: 13px; }
+.config-summary .item span { color: var(--text-dim); font-size: 12px; }
+.config-summary .item strong { font-family: 'JetBrains Mono', monospace; }
+
+/* Gauge */
+.gauge-section {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  margin-bottom: 20px;
+}
+@media (max-width: 768px) { .gauge-section { grid-template-columns: 1fr; } }
+.gauge-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.gauge-label { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+.gauge-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+.gauge-sub { font-size: 12px; color: var(--text-dim); }
+.gauge-bar {
+  height: 8px; background: var(--surface2); border-radius: 4px;
+  margin-top: 12px; overflow: hidden;
+}
+.gauge-fill {
+  height: 100%; border-radius: 4px; transition: width 0.4s, background 0.4s;
+}
+
+/* Orders table */
+.tbl-wrap { overflow-x: auto; }
+table.data-tbl {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+table.data-tbl th {
+  text-align: left; padding: 8px 10px; color: var(--text-dim);
+  font-weight: 500; font-size: 11px; text-transform: uppercase;
+  border-bottom: 2px solid var(--border); white-space: nowrap;
+}
+table.data-tbl td {
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
+}
+table.data-tbl tr:hover td { background: var(--surface2); }
+
+table.data-tbl th.num, table.data-tbl td.num { text-align: right; }
+
+.coeff-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 12px; font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+}
+.coeff-0 { background: var(--success-dim); color: var(--success); }
+.coeff-1 { background: var(--accent-dim); color: var(--accent); }
+.coeff-2 { background: var(--warn-dim); color: var(--warn); }
+.coeff-3 { background: var(--danger-dim); color: var(--danger); }
+
+.val-danger { color: var(--danger); font-weight: 500; }
+.val-warn { color: var(--warn); }
+.val-ok { color: var(--success); }
+
+/* Chart */
+.chart-container { position: relative; height: 320px; margin-top: 12px; }
+canvas { width: 100% !important; height: 100% !important; }
+
+.legend { display: flex; gap: 20px; margin-top: 8px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+/* Info tip */
+.info-tip {
+  display: inline-block; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--surface2); color: var(--text-dim);
+  font-size: 10px; text-align: center; line-height: 16px; cursor: help;
+  margin-left: 4px; position: relative;
+}
+.info-tip:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+  background: #333; color: #fff;
+  padding: 8px 12px; border-radius: 8px;
+  font-size: 12px; width: 260px; white-space: normal;
+  z-index: 10; line-height: 1.5;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 48px 20px; color: var(--text-dim);
+}
+.empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; margin-bottom: 16px; }
+
+/* Tabs for product detail */
+.tab-row { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+.tab-btn {
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: 8px;
+  background: transparent; color: var(--text-dim); font-size: 12px;
+  cursor: pointer; font-family: 'Noto Sans JP', sans-serif;
+}
+.tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>発注枠シミュレーター</h1>
+      <p>スプレッドシート連携版 — 受注実績ベースの枠推移シミュレーション</p>
+    </div>
+  </div>
+
+  <!-- Connection panel -->
+  <div class="panel">
+    <div class="panel-title">データ接続</div>
+    <div class="connect-bar">
+      <div class="field">
+        <label>GAS Web App URL</label>
+        <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/xxxxx/exec">
+      </div>
+      <button class="btn btn-primary" id="fetchBtn" onclick="fetchData()">データ取得</button>
+      <button class="btn btn-ghost" onclick="loadDemo()">デモデータで表示</button>
+    </div>
+    <div id="statusArea" style="margin-top:12px"></div>
+    <div id="configSummary" class="config-summary" style="display:none"></div>
+  </div>
+
+  <!-- Content area (hidden until data loaded) -->
+  <div id="content" style="display:none">
+
+    <!-- Gauges -->
+    <div class="gauge-section">
+      <div class="gauge-card">
+        <div class="gauge-label">初月の枠消費（加重）</div>
+        <div class="gauge-value mono" id="gaugeUsed">¥0</div>
+        <div class="gauge-sub" id="gaugePct">0% 使用中</div>
+        <div class="gauge-bar"><div class="gauge-fill" id="gaugeFill" style="width:0"></div></div>
+      </div>
+      <div class="gauge-card">
+        <div class="gauge-label">12ヶ月後の予測枠残</div>
+        <div class="gauge-value mono" id="gaugeRemain">¥0</div>
+        <div class="gauge-sub" id="gaugeRemainSub">—</div>
+        <div class="gauge-bar"><div class="gauge-fill" id="gaugeRemainFill" style="width:0; background:var(--success)"></div></div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="panel">
+      <div class="panel-title">
+        月次推移チャート
+        <span class="info-tip" data-tip="青=枠消費（加重値）、緑=受注解放累計、赤点線=発注枠上限。実績月は実線、未来月は点線で表示。">?</span>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>枠消費（加重）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--success)"></div>受注解放累計</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--danger);opacity:0.5"></div>発注枠上限</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div>新規発注</div>
+      </div>
+      <div class="chart-container"><canvas id="mainChart"></canvas></div>
+    </div>
+
+    <!-- Monthly detail -->
+    <div class="panel">
+      <div class="panel-title">月次詳細</div>
+      <div class="tbl-wrap">
+        <table class="data-tbl" id="monthlyTable">
+          <thead>
+            <tr>
+              <th>月</th>
+              <th class="num">新規発注額</th>
+              <th class="num">在庫残（原価）</th>
+              <th class="num">平均係数</th>
+              <th class="num">枠消費（加重）</th>
+              <th class="num">受注消化額</th>
+              <th class="num">受注消化数</th>
+              <th class="num">枠残</th>
+              <th class="num">消費率</th>
+              <th>データ</th>
+            </tr>
+          </thead>
+          <tbody id="monthlyBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Product detail -->
+    <div class="panel">
+      <div class="panel-title">商品マスタ &amp; 受注実績</div>
+      <div class="tbl-wrap">
+        <table class="data-tbl" id="ordersTable">
+          <thead>
+            <tr>
+              <th>商品名</th>
+              <th>タイプ</th>
+              <th>発注日</th>
+              <th>受注開始日</th>
+              <th class="num">数量</th>
+              <th class="num">原価</th>
+              <th class="num">発注額</th>
+              <th class="num">初期係数</th>
+              <th class="num">受注済</th>
+              <th class="num">残在庫</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Empty state -->
+  <div id="emptyState" class="empty-state">
+    <div class="icon">📊</div>
+    <p>GAS Web App URLを入力して「データ取得」するか、<br>「デモデータで表示」を押してください</p>
+  </div>
+
+</div>
+
+<script>
+// =====================================================
+// State
+// =====================================================
+let appData = null; // { settings, orders, salesData }
+
+// =====================================================
+// Fetch from GAS
+// =====================================================
+async function fetchData() {
+  const url = document.getElementById('gasUrl').value.trim();
+  if (!url) {
+    showStatus('URLを入力してください', 'err');
+    return;
+  }
+  
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true;
+  btn.textContent = '取得中...';
+  showStatus('スプレッドシートからデータを取得中...', 'loading');
+  
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    
+    if (!data.orders || data.orders.length === 0) {
+      showStatus('商品マスタが空です。スプシにデータを入力してください。', 'err');
+      btn.disabled = false;
+      btn.textContent = 'データ取得';
+      return;
+    }
+    
+    appData = data;
+    showStatus(`${data.orders.length}件の発注データを取得しました（${data.generatedAt?.substring(0,16) || ''}）`, 'ok');
+    runSimulation();
+    
+  } catch (e) {
+    showStatus(`取得失敗: ${e.message}。URLとデプロイ設定を確認してください。`, 'err');
+  }
+  
+  btn.disabled = false;
+  btn.textContent = 'データ取得';
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('statusArea');
+  const cls = type === 'ok' ? 'status-ok' : type === 'err' ? 'status-err' : 'status-loading';
+  const icon = type === 'ok' ? '✓' : type === 'err' ? '✕' : '⟳';
+  el.innerHTML = `<span class="status-badge ${cls}">${icon} ${msg}</span>`;
+}
+
+// =====================================================
+// Demo Data
+// =====================================================
+function loadDemo() {
+  appData = {
+    settings: {
+      '発注枠（万円）': 500,
+      '開始月': '2026-04',
+      'シミュレーション期間（月）': 12,
+    },
+    orders: [
+      { name: 'バッグA',  type: 'stock', orderDate: '2026-03-01', salesStartDate: '2026-04-01', qty: 60,  cost: 3500 },
+      { name: 'バッグB',  type: 'stock', orderDate: '2026-04-01', salesStartDate: '2026-06-01', qty: 40,  cost: 4200 },
+      { name: 'バッグC',  type: 'mto',   orderDate: '2026-04-01', salesStartDate: '2026-04-01', qty: 30,  cost: 5000 },
+      { name: '手帳A',    type: 'stock', orderDate: '2026-03-15', salesStartDate: '2026-04-01', qty: 150, cost: 800 },
+      { name: '手帳B',    type: 'stock', orderDate: '2026-05-01', salesStartDate: '2026-05-15', qty: 200, cost: 600 },
+      { name: '手帳C',    type: 'stock', orderDate: '2026-06-01', salesStartDate: '2026-09-01', qty: 100, cost: 1200 },
+      { name: 'ポーチA',  type: 'stock', orderDate: '2026-04-01', salesStartDate: '2026-04-15', qty: 80,  cost: 1800 },
+      { name: 'ポーチB',  type: 'mto',   orderDate: '2026-05-01', salesStartDate: '2026-05-01', qty: 50,  cost: 2000 },
+    ],
+    salesData: {
+      'バッグA': { '2026-04': 8, '2026-05': 10, '2026-06': 7, '2026-07': 6, '2026-08': 5 },
+      'バッグB': { '2026-06': 3, '2026-07': 5, '2026-08': 4, '2026-09': 3 },
+      '手帳A':   { '2026-04': 20, '2026-05': 25, '2026-06': 18, '2026-07': 15, '2026-08': 12 },
+      '手帳B':   { '2026-05': 30, '2026-06': 25, '2026-07': 20, '2026-08': 15, '2026-09': 10 },
+      'ポーチA': { '2026-04': 10, '2026-05': 12, '2026-06': 8, '2026-07': 6 },
+    },
+    generatedAt: new Date().toISOString(),
+  };
+  
+  showStatus('デモデータを読み込みました', 'ok');
+  runSimulation();
+}
+
+// =====================================================
+// Coefficient Calculation
+// =====================================================
+function monthDiff(d1, d2) {
+  return (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+}
+
+function calcInitialCoeff(order) {
+  if (order.type === 'mto') return 0;
+  if (!order.orderDate || !order.salesStartDate) return 0;
+  const od = new Date(order.orderDate + 'T00:00:00');
+  const sd = new Date(order.salesStartDate + 'T00:00:00');
+  const diff = monthDiff(od, sd);
+  return Math.max(1, diff + 1);
+}
+
+function calcCoeffAtMonth(order, targetMonth) {
+  if (order.type === 'mto') return 0;
+  const initial = calcInitialCoeff(order);
+  if (!order.orderDate) return initial;
+  const od = new Date(order.orderDate + 'T00:00:00');
+  const tm = new Date(targetMonth + '-01T00:00:00');
+  const elapsed = monthDiff(od, tm);
+  if (elapsed < 0) return 0;
+  return initial + elapsed;
+}
+
+// =====================================================
+// FIFO Fulfillment Logic
+// =====================================================
+function buildProductLots(orders) {
+  // Group orders by product name, sorted by orderDate (oldest first = FIFO)
+  const byProduct = {};
+  orders.forEach((o, idx) => {
+    if (o.type === 'mto') return;
+    const key = o.name;
+    if (!byProduct[key]) byProduct[key] = [];
+    byProduct[key].push({ ...o, _idx: idx });
+  });
+  // Sort each group by orderDate
+  Object.values(byProduct).forEach(lots => {
+    lots.sort((a, b) => (a.orderDate || '').localeCompare(b.orderDate || ''));
+  });
+  return byProduct;
+}
+
+function fulfillFIFO(productLots, productName, qtyToFulfill, inventory, month) {
+  const lots = productLots[productName];
+  if (!lots) return { fulfilledQty: 0, fulfilledAmount: 0 };
+  
+  let remainQty = qtyToFulfill;
+  let totalAmount = 0;
+  let totalQty = 0;
+  
+  for (const lot of lots) {
+    if (remainQty <= 0) break;
+    const invKey = lot._idx;
+    const currentQty = inventory[invKey]?.qty || 0;
+    if (currentQty <= 0) continue;
+    
+    // Only fulfill if sales have started for this lot
+    if (!lot.salesStartDate || lot.salesStartDate.substring(0, 7) > month) continue;
+    
+    const take = Math.min(currentQty, remainQty);
+    inventory[invKey].qty -= take;
+    totalAmount += take * lot.cost;
+    totalQty += take;
+    remainQty -= take;
+  }
+  
+  return { fulfilledQty: totalQty, fulfilledAmount: totalAmount };
+}
+
+// =====================================================
+// Main Simulation
+// =====================================================
+function runSimulation() {
+  if (!appData) return;
+  
+  const settings = appData.settings;
+  const orders = appData.orders;
+  const salesData = appData.salesData;
+  
+  const totalCap = (Number(settings['発注枠（万円）']) || 500) * 10000;
+  const startStr = String(settings['開始月'] || '2026-04');
+  const numMonths = Number(settings['シミュレーション期間（月）']) || 12;
+  
+  // Show config summary
+  const csEl = document.getElementById('configSummary');
+  csEl.style.display = 'flex';
+  csEl.innerHTML = `
+    <div class="item"><span>発注枠</span> <strong>${formatYen(totalCap)}</strong></div>
+    <div class="item"><span>開始月</span> <strong>${startStr}</strong></div>
+    <div class="item"><span>期間</span> <strong>${numMonths}ヶ月</strong></div>
+    <div class="item"><span>商品数</span> <strong>${orders.length}件</strong></div>
+  `;
+  
+  // Generate months
+  const months = [];
+  const [sy, sm] = startStr.split('-').map(Number);
+  for (let i = 0; i < numMonths; i++) {
+    const m = (sm - 1 + i) % 12;
+    const y = sy + Math.floor((sm - 1 + i) / 12);
+    months.push(`${y}-${String(m + 1).padStart(2, '0')}`);
+  }
+  
+  // Build inventory (per order index)
+  const inventory = {};
+  orders.forEach((o, idx) => {
+    if (o.type === 'mto') {
+      inventory[idx] = { qty: 0, cost: o.cost };
+    } else {
+      inventory[idx] = { qty: o.qty, cost: o.cost };
+    }
+  });
+  
+  // Build product lots for FIFO
+  const productLots = buildProductLots(orders);
+  
+  // Determine which months have actual sales data
+  const allSalesMonths = new Set();
+  Object.values(salesData).forEach(m => Object.keys(m).forEach(k => allSalesMonths.add(k)));
+  
+  // Average monthly fulfillment rate for forecasting future months
+  let totalSalesQty = 0;
+  let totalSalesMonthProducts = 0;
+  Object.values(salesData).forEach(months => {
+    Object.values(months).forEach(q => { totalSalesQty += q; totalSalesMonthProducts++; });
+  });
+  
+  const monthlyData = [];
+  
+  months.forEach((month, mi) => {
+    // 1. New orders arriving this month
+    let newOrderAmount = 0;
+    orders.forEach(o => {
+      if (o.orderDate && o.orderDate.substring(0, 7) === month) {
+        if (o.type !== 'mto') newOrderAmount += o.qty * o.cost;
+      }
+    });
+    
+    // 2. Calculate weighted consumption BEFORE fulfillment
+    let totalWeighted = 0;
+    let totalRawInventory = 0;
+    let coeffSum = 0;
+    let coeffCount = 0;
+    
+    orders.forEach((o, idx) => {
+      if (o.type === 'mto') return;
+      const rem = inventory[idx]?.qty || 0;
+      if (rem <= 0) return;
+      if (!o.orderDate || o.orderDate.substring(0, 7) > month) return;
+      
+      const coeff = calcCoeffAtMonth(o, month);
+      totalWeighted += rem * o.cost * coeff;
+      totalRawInventory += rem * o.cost;
+      coeffSum += coeff;
+      coeffCount++;
+    });
+    
+    const avgCoeff = coeffCount > 0 ? coeffSum / coeffCount : 0;
+    const hasActualData = allSalesMonths.has(month);
+    
+    // 3. Fulfill orders (FIFO)
+    let totalFulfilledAmount = 0;
+    let totalFulfilledQty = 0;
+    
+    // Collect unique product names (non-mto)
+    const productNames = [...new Set(orders.filter(o => o.type !== 'mto').map(o => o.name))];
+    
+    productNames.forEach(name => {
+      let qtyToFulfill = 0;
+      
+      if (hasActualData && salesData[name] && salesData[name][month]) {
+        // Use actual sales data
+        qtyToFulfill = salesData[name][month];
+      } else if (!hasActualData) {
+        // Forecast: use average sales rate for this product
+        const prodSales = salesData[name];
+        if (prodSales) {
+          const vals = Object.values(prodSales);
+          qtyToFulfill = vals.length > 0 ? Math.round(vals.reduce((a,b) => a+b, 0) / vals.length) : 0;
+        }
+      }
+      
+      if (qtyToFulfill > 0) {
+        const result = fulfillFIFO(productLots, name, qtyToFulfill, inventory, month);
+        totalFulfilledAmount += result.fulfilledAmount;
+        totalFulfilledQty += result.fulfilledQty;
+      }
+    });
+    
+    const capRemain = totalCap - totalWeighted;
+    const usagePct = totalCap > 0 ? totalWeighted / totalCap : 0;
+    
+    monthlyData.push({
+      month,
+      newOrderAmount,
+      rawInventory: totalRawInventory,
+      avgCoeff,
+      weighted: totalWeighted,
+      fulfilledAmount: totalFulfilledAmount,
+      fulfilledQty: totalFulfilledQty,
+      capRemain,
+      usagePct,
+      hasActualData,
+    });
+  });
+  
+  // Calculate final inventory per order
+  const finalInventory = {};
+  let totalSold = {};
+  orders.forEach((o, idx) => {
+    finalInventory[idx] = inventory[idx]?.qty || 0;
+    totalSold[idx] = o.qty - (inventory[idx]?.qty || 0);
+  });
+  
+  // Show content
+  document.getElementById('content').style.display = 'block';
+  document.getElementById('emptyState').style.display = 'none';
+  
+  renderGauges(monthlyData, totalCap);
+  renderChart(monthlyData, totalCap, months);
+  renderMonthlyTable(monthlyData, totalCap);
+  renderOrdersTable(orders, finalInventory, totalSold);
+}
+
+// =====================================================
+// Rendering
+// =====================================================
+function formatYen(val) {
+  if (Math.abs(val) >= 10000) return '¥' + (val / 10000).toFixed(1) + '万';
+  return '¥' + Math.round(val).toLocaleString();
+}
+
+function renderGauges(data, totalCap) {
+  const first = data[0] || {};
+  const last = data[data.length - 1] || {};
+  
+  const usedPct = first.usagePct || 0;
+  document.getElementById('gaugeUsed').textContent = formatYen(first.weighted || 0);
+  document.getElementById('gaugePct').textContent = `${(usedPct * 100).toFixed(1)}% 使用中`;
+  const fillEl = document.getElementById('gaugeFill');
+  fillEl.style.width = Math.min(usedPct * 100, 100) + '%';
+  fillEl.style.background = usedPct > 0.9 ? 'var(--danger)' : usedPct > 0.7 ? 'var(--warn)' : 'var(--accent)';
+  
+  const remainPct = totalCap > 0 ? Math.max(0, last.capRemain) / totalCap : 0;
+  document.getElementById('gaugeRemain').textContent = formatYen(Math.max(0, last.capRemain));
+  document.getElementById('gaugeRemainSub').textContent = last.capRemain < 0
+    ? `⚠ 枠を ${formatYen(Math.abs(last.capRemain))} 超過`
+    : `残 ${(remainPct * 100).toFixed(1)}%`;
+  const rfEl = document.getElementById('gaugeRemainFill');
+  rfEl.style.width = Math.min(remainPct * 100, 100) + '%';
+  rfEl.style.background = remainPct < 0.1 ? 'var(--danger)' : remainPct < 0.3 ? 'var(--warn)' : 'var(--success)';
+}
+
+function renderChart(data, totalCap, months) {
+  const canvas = document.getElementById('mainChart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width;
+  const H = rect.height;
+  ctx.clearRect(0, 0, W, H);
+  
+  const pad = { top: 30, right: 20, bottom: 40, left: 70 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+  
+  const allVals = data.map(d => d.weighted).concat([totalCap]);
+  const maxY = Math.max(...allVals) * 1.15;
+  
+  function xPos(i) { return pad.left + (i / (data.length - 1)) * cw; }
+  function yPos(v) { return pad.top + ch - (v / maxY) * ch; }
+  
+  // Grid
+  ctx.strokeStyle = '#dfe1e8';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 5; i++) {
+    const val = (maxY / 5) * i;
+    const y = yPos(val);
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    ctx.fillStyle = '#6b7084';
+    ctx.font = '11px "JetBrains Mono"';
+    ctx.textAlign = 'right';
+    ctx.fillText(formatYen(val), pad.left - 8, y + 4);
+  }
+  
+  // Month labels
+  ctx.fillStyle = '#6b7084';
+  ctx.font = '11px "Noto Sans JP"';
+  ctx.textAlign = 'center';
+  data.forEach((d, i) => {
+    const label = d.month.substring(5) + '月';
+    ctx.fillText(label, xPos(i), H - pad.bottom + 20);
+    // Mark actual vs forecast
+    if (d.hasActualData) {
+      ctx.fillStyle = 'var(--success)';
+      ctx.fillText('●', xPos(i), H - pad.bottom + 32);
+      ctx.fillStyle = '#6b7084';
+    }
+  });
+  
+  // Cap line
+  ctx.strokeStyle = 'rgba(224,69,69,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(pad.left, yPos(totalCap));
+  ctx.lineTo(W - pad.right, yPos(totalCap));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(224,69,69,0.6)';
+  ctx.font = '10px "Noto Sans JP"';
+  ctx.textAlign = 'left';
+  ctx.fillText('発注枠上限', pad.left + 4, yPos(totalCap) - 6);
+  
+  // New order bars
+  const barW = Math.max(8, cw / data.length * 0.3);
+  data.forEach((d, i) => {
+    if (d.newOrderAmount > 0) {
+      const x = xPos(i) - barW / 2;
+      const barH = (d.newOrderAmount / maxY) * ch;
+      const y = yPos(0) - barH;
+      ctx.fillStyle = 'rgba(217,142,31,0.2)';
+      ctx.fillRect(x, y, barW, barH);
+      ctx.strokeStyle = 'rgba(217,142,31,0.5)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, barW, barH);
+    }
+  });
+  
+  // Fulfilled cumulative
+  let cumulFulfilled = 0;
+  const fulfilledCumul = data.map(d => { cumulFulfilled += d.fulfilledAmount; return cumulFulfilled; });
+  
+  ctx.beginPath();
+  ctx.moveTo(xPos(0), yPos(0));
+  fulfilledCumul.forEach((v, i) => ctx.lineTo(xPos(i), yPos(v)));
+  ctx.lineTo(xPos(data.length - 1), yPos(0));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(42,157,96,0.08)';
+  ctx.fill();
+  
+  ctx.beginPath();
+  fulfilledCumul.forEach((v, i) => { i === 0 ? ctx.moveTo(xPos(0), yPos(v)) : ctx.lineTo(xPos(i), yPos(v)); });
+  ctx.strokeStyle = '#2a9d60';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // Weighted line — solid for actual, dashed for forecast
+  let lastActualIdx = -1;
+  data.forEach((d, i) => { if (d.hasActualData) lastActualIdx = i; });
+  
+  // Actual portion
+  if (lastActualIdx >= 0) {
+    ctx.beginPath();
+    for (let i = 0; i <= lastActualIdx; i++) {
+      i === 0 ? ctx.moveTo(xPos(i), yPos(data[i].weighted)) : ctx.lineTo(xPos(i), yPos(data[i].weighted));
+    }
+    ctx.strokeStyle = '#3b6ee6';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+  
+  // Forecast portion
+  if (lastActualIdx < data.length - 1) {
+    ctx.beginPath();
+    const startIdx = Math.max(0, lastActualIdx);
+    ctx.moveTo(xPos(startIdx), yPos(data[startIdx].weighted));
+    for (let i = startIdx + 1; i < data.length; i++) {
+      ctx.lineTo(xPos(i), yPos(data[i].weighted));
+    }
+    ctx.strokeStyle = '#3b6ee6';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  
+  // Dots
+  data.forEach((d, i) => {
+    const x = xPos(i);
+    const y = yPos(d.weighted);
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = d.weighted > totalCap ? '#e04545' : d.hasActualData ? '#3b6ee6' : '#94b3f0';
+    ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+  });
+}
+
+function renderMonthlyTable(data, totalCap) {
+  const tbody = document.getElementById('monthlyBody');
+  let cumulFulfilled = 0;
+  tbody.innerHTML = data.map(d => {
+    cumulFulfilled += d.fulfilledAmount;
+    const pct = d.usagePct * 100;
+    const pctClass = pct > 90 ? 'val-danger' : pct > 70 ? 'val-warn' : 'val-ok';
+    const dataTag = d.hasActualData
+      ? '<span class="coeff-badge coeff-0">実績</span>'
+      : '<span class="coeff-badge coeff-2">予測</span>';
+    return `<tr>
+      <td>${d.month.replace('-', '/')}</td>
+      <td class="num mono">${formatYen(d.newOrderAmount)}</td>
+      <td class="num mono">${formatYen(d.rawInventory)}</td>
+      <td class="num mono">${d.avgCoeff.toFixed(1)}</td>
+      <td class="num mono">${formatYen(d.weighted)}</td>
+      <td class="num mono">${formatYen(d.fulfilledAmount)}</td>
+      <td class="num mono">${d.fulfilledQty}</td>
+      <td class="num mono ${d.capRemain < 0 ? 'val-danger' : ''}">${formatYen(d.capRemain)}</td>
+      <td class="num mono ${pctClass}">${pct.toFixed(1)}%</td>
+      <td>${dataTag}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderOrdersTable(orders, finalInventory, totalSold) {
+  const tbody = document.getElementById('ordersBody');
+  tbody.innerHTML = orders.map((o, idx) => {
+    const coeff = calcInitialCoeff(o);
+    const coeffClass = coeff === 0 ? 'coeff-0' : coeff <= 1 ? 'coeff-1' : coeff <= 2 ? 'coeff-2' : 'coeff-3';
+    const orderAmt = o.qty * o.cost;
+    const remaining = finalInventory[idx] || 0;
+    const sold = totalSold[idx] || 0;
+    const typeBadge = o.type === 'mto'
+      ? '<span class="coeff-badge coeff-0">受注発注</span>'
+      : '<span class="coeff-badge coeff-1">見込み</span>';
+    return `<tr>
+      <td><strong>${o.name}</strong></td>
+      <td>${typeBadge}</td>
+      <td class="mono">${o.orderDate || '—'}</td>
+      <td class="mono">${o.salesStartDate || '—'}</td>
+      <td class="num mono">${o.qty}</td>
+      <td class="num mono">¥${o.cost.toLocaleString()}</td>
+      <td class="num mono">${formatYen(orderAmt)}</td>
+      <td><span class="coeff-badge ${coeffClass}">${coeff}</span></td>
+      <td class="num mono">${sold}</td>
+      <td class="num mono ${remaining > 0 ? 'val-warn' : 'val-ok'}">${remaining}</td>
+    </tr>`;
+  }).join('');
+}
+
+// =====================================================
+// Resize handler
+// =====================================================
+window.addEventListener('resize', () => {
+  if (appData) runSimulation();
+});
+</script>
+</body>
+</html>
