@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>発注管理 - メーカー画面</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap');
+  :root {
+    --bg:#f5f5f0;--surface:#fff;--surface-alt:#fafaf7;--border:#e0ddd5;--border-light:#eeece6;
+    --text:#2c2c2c;--text-secondary:#6b6b6b;--text-tertiary:#999;
+    --accent:#1a6b4a;--accent-light:#e8f4ee;--accent-hover:#15573c;
+    --warning:#c4700a;--warning-light:#fef3e0;--warning-bg:#fff8ed;
+    --danger:#c0392b;--danger-light:#fce8e6;
+    --blue:#2563eb;--blue-light:#eff6ff;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.04);--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+    --shadow-md:0 4px 12px rgba(0,0,0,.08);--radius:8px;--radius-lg:12px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:14px;min-height:100vh}
+
+  .login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:48px 40px;width:100%;max-width:380px;box-shadow:var(--shadow-md);text-align:center}
+  .login-box h1{font-size:20px;font-weight:600;margin-bottom:8px}
+  .login-box p{color:var(--text-secondary);font-size:13px;margin-bottom:32px}
+  .login-input{width:100%;padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius);font-size:18px;font-family:inherit;text-align:center;letter-spacing:.15em;font-weight:500;outline:none;transition:border-color .2s}
+  .login-input:focus{border-color:var(--accent)}
+  .login-input::placeholder{letter-spacing:0;font-size:14px;font-weight:400;color:var(--text-tertiary)}
+  .login-btn{width:100%;padding:14px;margin-top:16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .2s}
+  .login-btn:hover{background:var(--accent-hover)}
+  .login-btn:disabled{opacity:.5;cursor:not-allowed}
+  .login-error{color:var(--danger);font-size:12px;margin-top:12px;display:none}
+
+  .app{display:none}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .header-left{display:flex;align-items:center;gap:16px}
+  .header-title{font-size:15px;font-weight:600}
+  .brand-badge{background:var(--accent-light);color:var(--accent);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;letter-spacing:.05em}
+  .logout-btn{font-size:12px;color:var(--text-secondary);background:none;border:1px solid var(--border);padding:6px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:all .2s}
+  .logout-btn:hover{background:var(--bg)}
+
+  .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px}
+  .tab{padding:14px 20px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;user-select:none}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab-badge{background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:6px;vertical-align:middle}
+
+  .content{max-width:960px;margin:0 auto;padding:24px}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+
+  .search-bar{display:flex;gap:10px;margin-bottom:20px}
+  .search-input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;outline:none;background:var(--surface);transition:border-color .2s}
+  .search-input:focus{border-color:var(--accent)}
+  .search-input::placeholder{color:var(--text-tertiary)}
+
+  .order-list{display:flex;flex-direction:column;gap:12px}
+  .order-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow .2s}
+  .order-card:hover{box-shadow:var(--shadow)}
+  .order-card-header{padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;cursor:pointer}
+  .order-card-info{flex:1;min-width:0}
+  .order-sku{font-size:15px;font-weight:600;letter-spacing:.02em;margin-bottom:2px}
+  .order-name{font-size:12px;color:var(--text-secondary);margin-bottom:8px}
+  .order-meta{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--text-secondary)}
+  .order-meta-item{display:flex;align-items:center;gap:4px}
+  .order-meta-label{color:var(--text-tertiary)}
+  .order-status-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap;flex-shrink:0;align-self:center}
+  .status-pending{background:var(--warning-light);color:var(--warning)}
+  .status-answered{background:var(--accent-light);color:var(--accent)}
+  .status-partial{background:var(--blue-light);color:var(--blue)}
+
+  .order-card-body{display:none;border-top:1px solid var(--border-light);padding:20px;background:var(--surface-alt)}
+  .order-card.expanded .order-card-body{display:block}
+  .note-text{font-size:12px;color:var(--text-secondary);background:var(--warning-bg);border:1px solid #f0e4cc;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;line-height:1.7}
+  .note-text::before{content:'📝 備考：';font-weight:600}
+  .delivery-section-title{font-size:13px;font-weight:600;margin-bottom:12px}
+
+  .delivery-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border-light)}
+  .delivery-table th{text-align:left;padding:10px 14px;background:var(--bg);font-weight:500;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border-light)}
+  .delivery-table td{padding:10px 14px;border-bottom:1px solid var(--border-light);vertical-align:middle}
+  .delivery-table tr:last-child td{border-bottom:none}
+  .delivery-table input[type="date"],.delivery-table input[type="number"]{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;outline:none;background:#fff;width:100%;transition:border-color .2s}
+  .delivery-table input:focus{border-color:var(--accent)}
+  input[type="number"]{width:80px}
+  input[type="date"]{width:160px}
+  .ds-scheduled{color:var(--warning);font-size:11px;font-weight:500}
+  .ds-delivered{color:var(--blue);font-size:11px;font-weight:500}
+  .ds-inspected{color:var(--accent);font-size:11px;font-weight:500}
+
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn{padding:8px 16px;border-radius:var(--radius);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .2s;border:1px solid transparent;display:inline-flex;align-items:center;gap:6px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover:not(:disabled){background:var(--accent-hover)}
+  .btn-secondary{background:var(--surface);color:var(--text);border-color:var(--border)}
+  .btn-secondary:hover{background:var(--bg)}
+  .btn-danger-text{background:none;color:var(--danger);border:none;padding:8px}
+  .btn-danger-text:hover{background:var(--danger-light)}
+  .btn-sm{padding:5px 10px;font-size:11px}
+
+  .summary-bar{display:flex;gap:12px;margin-bottom:20px}
+  .summary-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;flex:1;box-shadow:var(--shadow-sm)}
+  .summary-number{font-size:24px;font-weight:700;line-height:1;margin-bottom:4px}
+  .summary-label{font-size:11px;color:var(--text-secondary)}
+  .summary-number.warn{color:var(--warning)}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--surface);border-radius:var(--radius-lg);width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden}
+  .modal-header{padding:20px 24px;border-bottom:1px solid var(--border-light);font-weight:600;font-size:15px}
+  .modal-body{padding:24px;font-size:13px;line-height:1.7;color:var(--text-secondary)}
+  .modal-footer{padding:16px 24px;border-top:1px solid var(--border-light);display:flex;gap:8px;justify-content:flex-end}
+
+  .toast{position:fixed;bottom:24px;right:24px;background:#2c2c2c;color:#fff;padding:14px 20px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-md);z-index:1000;transform:translateY(100px);opacity:0;transition:all .3s ease;max-width:360px}
+  .toast.show{transform:translateY(0);opacity:1}
+
+  .empty-state{text-align:center;padding:60px 20px;color:var(--text-secondary)}
+  .empty-state-icon{font-size:40px;margin-bottom:12px;opacity:.5}
+  .empty-state-text{font-size:14px;font-weight:500;margin-bottom:4px}
+  .empty-state-sub{font-size:12px;color:var(--text-tertiary)}
+
+  .loading{text-align:center;padding:40px;color:var(--text-tertiary);font-size:13px}
+
+  @media(max-width:640px){
+    .content{padding:16px}.order-card-header{padding:14px 16px;flex-direction:column;gap:10px}
+    .order-card-body{padding:16px}.summary-bar{flex-direction:column}
+    .tabs{padding:0 16px;overflow-x:auto}.tab{padding:14px 14px;white-space:nowrap}
+    .header{padding:0 16px}.search-bar{flex-direction:column}
+  }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h1>発注管理システム</h1>
+    <p>ブランドコードを入力してください</p>
+    <input type="text" class="login-input" id="brandInput" placeholder="例：BGS" autofocus>
+    <button class="login-btn" id="loginBtn" onclick="handleLogin()">ログイン</button>
+    <div class="login-error" id="loginError">該当するブランドが見つかりません</div>
+  </div>
+</div>
+
+<!-- App -->
+<div class="app" id="app">
+  <div class="header">
+    <div class="header-left">
+      <span class="header-title">発注管理</span>
+      <span class="brand-badge" id="brandLabel"></span>
+    </div>
+    <div class="header-right">
+      <button class="logout-btn" onclick="handleLogout()">ログアウト</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="pending" onclick="switchTab('pending')">
+      未回答の発注 <span class="tab-badge" id="pendingCount">0</span>
+    </div>
+    <div class="tab" data-tab="answered" onclick="switchTab('answered')">回答済み一覧</div>
+  </div>
+  <div class="content">
+    <div class="tab-panel active" id="panel-pending">
+      <div class="summary-bar">
+        <div class="summary-item"><div class="summary-number warn" id="summaryPending">0</div><div class="summary-label">未回答</div></div>
+        <div class="summary-item"><div class="summary-number" id="summaryAnswered" style="color:var(--accent)">0</div><div class="summary-label">回答済み</div></div>
+        <div class="summary-item"><div class="summary-number" id="summaryPartial" style="color:var(--blue)">0</div><div class="summary-label">一部納品</div></div>
+      </div>
+      <div class="order-list" id="pendingList"><div class="loading">読み込み中…</div></div>
+    </div>
+    <div class="tab-panel" id="panel-answered">
+      <div class="search-bar">
+        <input type="text" class="search-input" id="searchInput" placeholder="品番・商品名で検索…" oninput="renderAnswered()">
+      </div>
+      <div class="order-list" id="answeredList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <div class="modal-header" id="modalTitle">確認</div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" id="modalConfirmBtn">確定</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- Supabase CDN + config -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+
+<script>
+// ════════════════════════════════════════
+// State
+// ════════════════════════════════════════
+let currentAccess = null;  // { code, role, brand_code, label }
+let orders = [];
+
+// ════════════════════════════════════════
+// Login
+// ════════════════════════════════════════
+async function handleLogin() {
+  const code = document.getElementById('brandInput').value.trim();
+  if (!code) return;
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = '接続中…';
+
+  const access = await loginWithCode(code);
+
+  if (access && access.role === 'manufacturer') {
+    currentAccess = access;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('brandLabel').textContent = `${access.code} — ${access.label}`;
+    await loadData();
+    setupRealtime();
+  } else if (access) {
+    showToast('この画面はメーカー専用です');
+    btn.disabled = false; btn.textContent = 'ログイン';
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+    setTimeout(() => document.getElementById('loginError').style.display = 'none', 3000);
+    btn.disabled = false; btn.textContent = 'ログイン';
+  }
+}
+
+document.getElementById('brandInput').addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
+
+function handleLogout() {
+  currentAccess = null;
+  orders = [];
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = false; btn.textContent = 'ログイン';
+  document.getElementById('brandInput').value = '';
+  document.getElementById('brandInput').focus();
+}
+
+// ════════════════════════════════════════
+// Data Loading
+// ════════════════════════════════════════
+async function loadData() {
+  orders = await fetchOrdersWithDeliveries(currentAccess.brand_code);
+  renderAll();
+}
+
+function setupRealtime() {
+  subscribeToDeliveryChanges(async (payload) => {
+    // Reload data on any change
+    await loadData();
+  });
+}
+
+// ════════════════════════════════════════
+// Tab
+// ════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `panel-${tab}`));
+}
+
+// ════════════════════════════════════════
+// Render
+// ════════════════════════════════════════
+function renderAll() { renderPending(); renderAnswered(); updateSummary(); }
+
+function updateSummary() {
+  const pending = orders.filter(o => o.status === 'pending').length;
+  const answered = orders.filter(o => o.status === 'answered').length;
+  const partial = orders.filter(o => o.status === 'partial').length;
+  document.getElementById('summaryPending').textContent = pending;
+  document.getElementById('summaryAnswered').textContent = answered;
+  document.getElementById('summaryPartial').textContent = partial;
+  document.getElementById('pendingCount').textContent = pending;
+}
+
+function renderPending() {
+  const list = document.getElementById('pendingList');
+  const pending = orders.filter(o => o.status === 'pending');
+  if (!pending.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✓</div><div class="empty-state-text">未回答の発注はありません</div><div class="empty-state-sub">すべての発注に回答済みです</div></div>`;
+    return;
+  }
+  list.innerHTML = pending.map(o => renderOrderCard(o, true)).join('');
+}
+
+function renderAnswered() {
+  const list = document.getElementById('answeredList');
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  let items = orders.filter(o => o.status !== 'pending' && o.status !== 'cancelled');
+  if (q) items = items.filter(o => o.sku.toLowerCase().includes(q) || o.product_name.toLowerCase().includes(q) || o.id.toLowerCase().includes(q));
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">${q?'検索結果はありません':'回答済みの発注はありません'}</div></div>`;
+    return;
+  }
+  list.innerHTML = items.map(o => renderOrderCard(o, false)).join('');
+}
+
+function renderOrderCard(order, isPending) {
+  const esc = escapeHtml;
+  const statusMap = { pending:'<span class="order-status-badge status-pending">未回答</span>', answered:'<span class="order-status-badge status-answered">回答済</span>', partial:'<span class="order-status-badge status-partial">一部納品</span>' };
+  const noteHtml = order.note ? `<div class="note-text">${esc(order.note)}</div>` : '';
+  const ds = order.delivery_schedules || [];
+  let bodyContent = '';
+
+  if (isPending) {
+    bodyContent = `${noteHtml}
+      <div class="delivery-section-title">納品予定を入力</div>
+      <table class="delivery-table"><thead><tr><th>回</th><th>納品予定日</th><th>数量</th><th></th></tr></thead>
+      <tbody id="newRows-${order.id}"><tr>
+        <td>1</td><td><input type="date" id="nd-date-${order.id}-0"></td>
+        <td><input type="number" id="nd-qty-${order.id}-0" value="${order.quantity}" min="1"></td><td></td>
+      </tr></tbody></table>
+      <div class="btn-row">
+        <button class="btn btn-secondary btn-sm" onclick="addNewRow('${order.id}',${order.quantity})">＋ 分納を追加</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-primary" onclick="doSubmit('${order.id}')">回答を確定する</button>
+      </div>`;
+  } else {
+    const rows = ds.map((d, i) => {
+      const sc = d.status==='delivered'?'ds-delivered':d.status==='inspected'?'ds-inspected':'ds-scheduled';
+      const sl = d.status==='delivered'?'納品済':d.status==='inspected'?'検品済':'予定';
+      const disabled = d.status!=='scheduled'?'disabled':'';
+      return `<tr><td>${i+1}</td>
+        <td><input type="date" value="${d.scheduled_date}" id="ed-date-${order.id}-${i}" data-did="${d.id}" ${disabled}></td>
+        <td><input type="number" value="${d.quantity}" id="ed-qty-${order.id}-${i}" data-did="${d.id}" min="1" ${disabled}></td>
+        <td class="${sc}">${sl}</td></tr>`;
+    }).join('');
+    const hasEditable = ds.some(d => d.status==='scheduled');
+    bodyContent = `${noteHtml}
+      <div class="delivery-section-title">納品予定</div>
+      <table class="delivery-table"><thead><tr><th>回</th><th>納品予定日</th><th>数量</th><th>状態</th></tr></thead><tbody>${rows}</tbody></table>
+      ${hasEditable?`<div class="btn-row">
+        <button class="btn btn-secondary btn-sm" onclick="addExistingRow('${order.id}')">＋ 分納を追加</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-primary btn-sm" onclick="doUpdate('${order.id}')">変更を保存</button>
+      </div>`:'<div style="font-size:12px;color:var(--text-tertiary);margin-top:4px;">すべての納品が完了しています</div>'}`;
+  }
+
+  return `<div class="order-card" id="card-${order.id}">
+    <div class="order-card-header" onclick="document.getElementById('card-${order.id}').classList.toggle('expanded')">
+      <div class="order-card-info">
+        <div class="order-sku">${esc(order.sku)}</div>
+        <div class="order-name">${esc(order.product_name)}</div>
+        <div class="order-meta">
+          <div class="order-meta-item"><span class="order-meta-label">発注番号</span>${order.id}</div>
+          <div class="order-meta-item"><span class="order-meta-label">数量</span>${order.quantity}</div>
+          <div class="order-meta-item"><span class="order-meta-label">希望日</span>${formatDateDisplay(order.desired_date)}</div>
+          <div class="order-meta-item"><span class="order-meta-label">発注日</span>${formatDateDisplay(order.order_date)}</div>
+        </div>
+      </div>
+      ${statusMap[order.status]||''}
+    </div>
+    <div class="order-card-body">${bodyContent}</div>
+  </div>`;
+}
+
+// ════════════════════════════════════════
+// New delivery rows (pending orders)
+// ════════════════════════════════════════
+const rowCounters = {};
+
+function addNewRow(orderId, totalQty) {
+  if (!rowCounters[orderId]) rowCounters[orderId] = 1;
+  rowCounters[orderId]++;
+  const idx = rowCounters[orderId] - 1;
+  const tbody = document.getElementById(`newRows-${orderId}`);
+  const tr = document.createElement('tr'); tr.id = `nd-row-${orderId}-${idx}`;
+  tr.innerHTML = `<td>${idx+1}</td><td><input type="date" id="nd-date-${orderId}-${idx}"></td>
+    <td><input type="number" id="nd-qty-${orderId}-${idx}" min="1" placeholder="数量"></td>
+    <td><button class="btn btn-danger-text btn-sm" onclick="this.closest('tr').remove()">削除</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function addExistingRow(orderId) {
+  const table = document.querySelector(`#card-${orderId} .delivery-table tbody`);
+  const newIdx = table.children.length;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${newIdx+1}</td><td><input type="date" id="ed-date-${orderId}-${newIdx}" data-did="NEW"></td>
+    <td><input type="number" id="ed-qty-${orderId}-${newIdx}" min="1" placeholder="数量" data-did="NEW"></td>
+    <td class="ds-scheduled">予定</td>`;
+  table.appendChild(tr);
+}
+
+// ════════════════════════════════════════
+// Submit / Update
+// ════════════════════════════════════════
+async function doSubmit(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  const count = (rowCounters[orderId] || 1);
+  let schedules = [];
+  let totalQty = 0;
+
+  for (let i = 0; i < count; i++) {
+    const dateEl = document.getElementById(`nd-date-${orderId}-${i}`);
+    const qtyEl = document.getElementById(`nd-qty-${orderId}-${i}`);
+    if (!dateEl || !qtyEl) continue;
+    if (!dateEl.value || !(parseInt(qtyEl.value) > 0)) continue;
+    schedules.push({ scheduledDate: dateEl.value, quantity: parseInt(qtyEl.value) });
+    totalQty += parseInt(qtyEl.value);
+  }
+
+  if (!schedules.length) { showToast('納品予定日と数量を入力してください'); return; }
+
+  const doIt = async () => {
+    const btn = document.querySelector(`#card-${orderId} .btn-primary`);
+    if (btn) { btn.disabled = true; btn.textContent = '送信中…'; }
+    const result = await submitDeliverySchedules(orderId, schedules, currentAccess.code);
+    if (result) {
+      delete rowCounters[orderId];
+      await loadData();
+      showToast(`${order.sku} の納品予定を回答しました`);
+      if (!orders.some(o => o.status === 'pending')) switchTab('answered');
+    } else {
+      showToast('エラーが発生しました');
+      if (btn) { btn.disabled = false; btn.textContent = '回答を確定する'; }
+    }
+  };
+
+  if (totalQty !== order.quantity) {
+    showModal('数量の確認', `発注数量は <strong>${order.quantity}</strong> ですが、入力された合計は <strong>${totalQty}</strong> です。<br>このまま回答しますか？`, async () => { closeModal(); await doIt(); });
+  } else {
+    await doIt();
+  }
+}
+
+async function doUpdate(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  const ds = order.delivery_schedules || [];
+  const card = document.getElementById(`card-${orderId}`);
+  const rows = card.querySelectorAll('.delivery-table tbody tr');
+  let hasChange = false;
+  let operations = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const dateEl = document.getElementById(`ed-date-${orderId}-${i}`);
+    const qtyEl = document.getElementById(`ed-qty-${orderId}-${i}`);
+    if (!dateEl || !qtyEl) continue;
+    const did = dateEl.dataset.did;
+
+    if (did === 'NEW') {
+      if (dateEl.value && parseInt(qtyEl.value) > 0) {
+        operations.push({ type: 'add', date: dateEl.value, qty: parseInt(qtyEl.value), sort: i + 1 });
+        hasChange = true;
+      }
+    } else {
+      const orig = ds.find(d => d.id === did);
+      if (orig && (orig.scheduled_date !== dateEl.value || orig.quantity !== parseInt(qtyEl.value))) {
+        operations.push({ type: 'update', id: did, date: dateEl.value, qty: parseInt(qtyEl.value) });
+        hasChange = true;
+      }
+    }
+  }
+
+  if (!hasChange) { showToast('変更はありません'); return; }
+
+  showModal('変更の確認', '納品予定を変更します。変更内容は発注者と倉庫担当者に通知されます。<br>よろしいですか？', async () => {
+    closeModal();
+    for (const op of operations) {
+      if (op.type === 'update') {
+        await updateDeliverySchedule(op.id, op.date, op.qty, currentAccess.code);
+      } else if (op.type === 'add') {
+        await addDeliverySchedule(orderId, op.date, op.qty, op.sort, currentAccess.code);
+      }
+    }
+    await loadData();
+    showToast(`${order.sku} の納品予定を更新しました（通知送信）`);
+  });
+}
+
+// ════════════════════════════════════════
+// Modal & Toast
+// ════════════════════════════════════════
+function showModal(title, body, onConfirm) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('confirmModal').classList.add('show');
+  document.getElementById('modalConfirmBtn').onclick = onConfirm;
+}
+function closeModal() { document.getElementById('confirmModal').classList.remove('show'); }
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+document.getElementById('confirmModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+</script>
+</body>
+</html>

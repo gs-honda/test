@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>発注管理 - 倉庫画面</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap');
+  :root{--bg:#f5f5f0;--surface:#fff;--surface-alt:#fafaf7;--border:#e0ddd5;--border-light:#eeece6;--text:#2c2c2c;--text-secondary:#6b6b6b;--text-tertiary:#999;--accent:#1a6b4a;--accent-light:#e8f4ee;--accent-hover:#15573c;--warning:#c4700a;--warning-light:#fef3e0;--warning-bg:#fff8ed;--danger:#c0392b;--danger-light:#fce8e6;--blue:#2563eb;--blue-light:#eff6ff;--orange:#ea580c;--orange-light:#fff7ed;--shadow-sm:0 1px 2px rgba(0,0,0,.04);--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);--shadow-md:0 4px 12px rgba(0,0,0,.08);--radius:8px;--radius-lg:12px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:14px;min-height:100vh}
+
+  .login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:48px 40px;width:100%;max-width:380px;box-shadow:var(--shadow-md);text-align:center}
+  .login-box h1{font-size:20px;font-weight:600;margin-bottom:8px}
+  .login-box p{color:var(--text-secondary);font-size:13px;margin-bottom:32px}
+  .login-input{width:100%;padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius);font-size:18px;font-family:inherit;text-align:center;letter-spacing:.15em;font-weight:500;outline:none;transition:border-color .2s}
+  .login-input:focus{border-color:var(--accent)}
+  .login-input::placeholder{letter-spacing:0;font-size:14px;font-weight:400;color:var(--text-tertiary)}
+  .login-btn{width:100%;padding:14px;margin-top:16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .2s}
+  .login-btn:hover{background:var(--accent-hover)}
+  .login-btn:disabled{opacity:.5;cursor:not-allowed}
+  .login-hint{font-size:11px;color:var(--text-tertiary);margin-top:16px}
+  .login-error{color:var(--danger);font-size:12px;margin-top:12px;display:none}
+
+  .app{display:none}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .header-left{display:flex;align-items:center;gap:16px}
+  .header-title{font-size:15px;font-weight:600}
+  .role-badge{background:#e0f2fe;color:#0369a1;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+  .logout-btn{font-size:12px;color:var(--text-secondary);background:none;border:1px solid var(--border);padding:6px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:all .2s}
+  .logout-btn:hover{background:var(--bg)}
+
+  .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;overflow-x:auto}
+  .tab{padding:14px 18px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;user-select:none}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab-badge{background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:6px;vertical-align:middle}
+
+  .content{max-width:1000px;margin:0 auto;padding:24px}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+
+  .summary-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  .summary-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;flex:1;min-width:90px;box-shadow:var(--shadow-sm)}
+  .summary-number{font-size:22px;font-weight:700;line-height:1;margin-bottom:4px}
+  .summary-label{font-size:11px;color:var(--text-secondary)}
+
+  .quick-filters{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+  .qf-btn{padding:7px 14px;border-radius:20px;font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text-secondary);transition:all .2s}
+  .qf-btn:hover{background:var(--bg);color:var(--text)}
+  .qf-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+  .search-input{flex:1;min-width:160px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;outline:none;background:var(--surface);transition:border-color .2s}
+  .search-input:focus{border-color:var(--accent)}
+  .search-input::placeholder{color:var(--text-tertiary)}
+  .filter-select{padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;outline:none;background:var(--surface);cursor:pointer;min-width:120px}
+
+  .notif-banner{background:var(--orange-light);border:1px solid #fed7aa;border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:none}
+  .notif-banner.show{display:block}
+  .notif-banner-title{font-size:13px;font-weight:600;color:var(--orange);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .notif-banner-list{list-style:none}
+  .notif-banner-list li{font-size:12px;color:var(--text-secondary);padding:4px 0;border-bottom:1px solid #fde8d0;line-height:1.6}
+  .notif-banner-list li:last-child{border-bottom:none}
+  .notif-sku{font-weight:600;color:var(--text)}
+  .notif-change{color:var(--danger)}
+  .notif-dismiss{font-size:11px;color:var(--orange);background:none;border:none;cursor:pointer;font-family:inherit;margin-top:8px;padding:4px 0;text-decoration:underline}
+
+  .delivery-list{display:flex;flex-direction:column;gap:8px}
+  .delivery-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow .2s}
+  .delivery-card:hover{box-shadow:var(--shadow)}
+  .delivery-card.is-today{border-left:3px solid var(--accent)}
+  .delivery-card.is-overdue{border-left:3px solid var(--danger)}
+  .delivery-card.is-changed{border-left:3px solid var(--orange)}
+
+  .dc-header{padding:14px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;cursor:pointer}
+  .dc-info{flex:1;min-width:0}
+  .dc-date-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .dc-date{font-size:15px;font-weight:700;letter-spacing:.02em}
+  .dc-date-label{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px}
+  .dc-today{background:var(--accent-light);color:var(--accent)}
+  .dc-tomorrow{background:var(--blue-light);color:var(--blue)}
+  .dc-overdue{background:var(--danger-light);color:var(--danger)}
+  .dc-changed-badge{background:var(--orange-light);color:var(--orange)}
+  .dc-sku{font-size:13px;font-weight:600;margin-bottom:1px}
+  .dc-name{font-size:11px;color:var(--text-secondary);margin-bottom:4px}
+  .dc-meta{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--text-secondary)}
+  .dc-meta-label{color:var(--text-tertiary)}
+  .dc-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .brand-tag{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;background:var(--bg);color:var(--text-secondary);letter-spacing:.05em}
+  .badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap}
+  .badge-scheduled{background:var(--warning-light);color:var(--warning)}
+  .badge-delivered{background:var(--blue-light);color:var(--blue)}
+  .badge-inspected{background:var(--accent-light);color:var(--accent)}
+
+  .dc-body{display:none;border-top:1px solid var(--border-light);padding:18px;background:var(--surface-alt)}
+  .delivery-card.expanded .dc-body{display:block}
+  .dc-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .dc-detail-item{font-size:12px}
+  .dc-detail-label{color:var(--text-tertiary);font-size:11px;margin-bottom:2px}
+  .dc-detail-value{font-weight:500}
+  .dc-action-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border-light)}
+  .dc-action-group{display:flex;flex-direction:column;gap:4px}
+  .dc-action-label{font-size:11px;color:var(--text-secondary);font-weight:500}
+  .dc-action-input{padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s;width:160px}
+  .dc-action-input:focus{border-color:var(--accent)}
+  .dc-action-input:disabled{background:var(--bg);color:var(--text-secondary);cursor:not-allowed}
+
+  .btn{padding:8px 16px;border-radius:var(--radius);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .2s;border:1px solid transparent;display:inline-flex;align-items:center;gap:6px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover:not(:disabled){background:var(--accent-hover)}
+  .btn-secondary{background:var(--surface);color:var(--text);border-color:var(--border)}.btn-secondary:hover{background:var(--bg)}
+  .btn-sm{padding:6px 12px;font-size:11px}
+
+  .dc-change-note{margin-top:12px;padding:10px 14px;background:var(--orange-light);border:1px solid #fed7aa;border-radius:var(--radius);font-size:12px;color:var(--text-secondary);line-height:1.7}
+  .dc-change-note strong{color:var(--orange)}
+  .date-group-header{font-size:12px;font-weight:600;color:var(--text-secondary);padding:10px 4px 6px;margin-top:8px;display:flex;align-items:center;gap:8px}
+  .date-group-header:first-child{margin-top:0}
+  .date-group-line{flex:1;height:1px;background:var(--border-light)}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--surface);border-radius:var(--radius-lg);width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden}
+  .modal-header{padding:18px 22px;border-bottom:1px solid var(--border-light);font-weight:600;font-size:14px}
+  .modal-body{padding:22px;font-size:13px;line-height:1.7;color:var(--text-secondary)}
+  .modal-footer{padding:14px 22px;border-top:1px solid var(--border-light);display:flex;gap:8px;justify-content:flex-end}
+
+  .toast{position:fixed;bottom:24px;right:24px;background:#2c2c2c;color:#fff;padding:14px 20px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-md);z-index:1000;transform:translateY(100px);opacity:0;transition:all .3s ease;max-width:360px}
+  .toast.show{transform:translateY(0);opacity:1}
+  .empty-state{text-align:center;padding:60px 20px;color:var(--text-secondary)}
+  .empty-state-icon{font-size:40px;margin-bottom:12px;opacity:.5}
+  .empty-state-text{font-size:14px;font-weight:500;margin-bottom:4px}
+  .loading{text-align:center;padding:40px;color:var(--text-tertiary);font-size:13px}
+
+  @media(max-width:640px){.content{padding:16px}.dc-header{padding:12px 14px}.dc-body{padding:14px}.summary-bar{gap:6px}.summary-item{min-width:70px;padding:10px 12px}.summary-number{font-size:18px}.dc-detail-grid{grid-template-columns:1fr}.dc-action-row{flex-direction:column;align-items:stretch}.dc-action-input{width:100%}.tabs{padding:0 12px}.tab{padding:12px 12px;font-size:12px}.header{padding:0 16px}.toolbar{flex-direction:column}.quick-filters{gap:4px}.qf-btn{padding:6px 10px;font-size:11px}}
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h1>発注管理システム</h1>
+    <p>コードを入力してください</p>
+    <input type="text" class="login-input" id="codeInput" placeholder="コードを入力" autofocus>
+    <button class="login-btn" id="loginBtn" onclick="handleLogin()">ログイン</button>
+    <div class="login-hint">倉庫：WAREHOUSE ／ 管理者：XXX</div>
+    <div class="login-error" id="loginError">該当するコードが見つかりません</div>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <div class="header">
+    <div class="header-left"><span class="header-title">発注管理</span><span class="role-badge" id="roleLabel">倉庫</span></div>
+    <div class="header-right"><button class="logout-btn" onclick="handleLogout()">ログアウト</button></div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="schedule" onclick="switchTab('schedule')">納品予定 <span class="tab-badge" id="todayBadge">0</span></div>
+    <div class="tab" data-tab="history" onclick="switchTab('history')">納品・検品済み</div>
+  </div>
+  <div class="content">
+    <div class="tab-panel active" id="panel-schedule">
+      <div class="notif-banner" id="notifBanner">
+        <div class="notif-banner-title">⚠ 納品予定の変更がありました</div>
+        <ul class="notif-banner-list" id="notifList"></ul>
+        <button class="notif-dismiss" onclick="dismissNotif()">確認しました</button>
+      </div>
+      <div class="summary-bar">
+        <div class="summary-item"><div class="summary-number" style="color:var(--danger)" id="sumOverdue">0</div><div class="summary-label">超過</div></div>
+        <div class="summary-item"><div class="summary-number" style="color:var(--accent)" id="sumToday">0</div><div class="summary-label">本日</div></div>
+        <div class="summary-item"><div class="summary-number" style="color:var(--blue)" id="sumWeek">0</div><div class="summary-label">今週</div></div>
+        <div class="summary-item"><div class="summary-number" style="color:var(--text)" id="sumAll">0</div><div class="summary-label">全件</div></div>
+      </div>
+      <div class="quick-filters">
+        <button class="qf-btn active" data-qf="all" onclick="setQF('all')">すべて</button>
+        <button class="qf-btn" data-qf="overdue" onclick="setQF('overdue')">超過</button>
+        <button class="qf-btn" data-qf="today" onclick="setQF('today')">本日</button>
+        <button class="qf-btn" data-qf="week" onclick="setQF('week')">今週</button>
+        <button class="qf-btn" data-qf="nextweek" onclick="setQF('nextweek')">来週</button>
+      </div>
+      <div class="toolbar">
+        <input type="text" class="search-input" id="searchInput" placeholder="品番・商品名で検索…" oninput="renderSchedule()">
+        <select class="filter-select" id="brandFilter" onchange="renderSchedule()"><option value="">全ブランド</option></select>
+      </div>
+      <div class="delivery-list" id="scheduleList"><div class="loading">読み込み中…</div></div>
+    </div>
+    <div class="tab-panel" id="panel-history">
+      <div class="toolbar">
+        <input type="text" class="search-input" id="historySearch" placeholder="品番・商品名で検索…" oninput="renderHistory()">
+        <select class="filter-select" id="historyBrandFilter" onchange="renderHistory()"><option value="">全ブランド</option></select>
+      </div>
+      <div class="delivery-list" id="historyList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmModal"><div class="modal"><div class="modal-header" id="modalTitle">確認</div><div class="modal-body" id="modalBody"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">キャンセル</button><button class="btn btn-primary" id="modalConfirmBtn">確定</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+let currentAccess=null;
+let deliveries=[];
+let notifications=[];
+let quickFilter='all';
+const TODAY=new Date();TODAY.setHours(0,0,0,0);
+const todayISO=todayStr();
+
+function isOverdue(d){return d<todayISO}
+function isToday(d){return d===todayISO}
+function isThisWeek(d){const dt=new Date(d+'T00:00:00');const we=new Date(TODAY);const dow=TODAY.getDay();we.setDate(we.getDate()+(dow===0?0:7-dow));return dt>=TODAY&&dt<=we}
+function isNextWeek(d){const dt=new Date(d+'T00:00:00');const dow=TODAY.getDay();const nws=new Date(TODAY);nws.setDate(nws.getDate()+(dow===0?1:8-dow));const nwe=new Date(nws);nwe.setDate(nwe.getDate()+6);return dt>=nws&&dt<=nwe}
+function dayLabel(d){const dt=new Date(d+'T00:00:00');const diff=Math.round((dt-TODAY)/864e5);const dow=['日','月','火','水','木','金','土'][dt.getDay()];if(diff<0)return`${Math.abs(diff)}日超過`;if(diff===0)return'本日';if(diff===1)return'明日';return`${diff}日後（${dow}）`}
+
+async function handleLogin(){
+  const code=document.getElementById('codeInput').value.trim();
+  if(!code)return;
+  const btn=document.getElementById('loginBtn');btn.disabled=true;btn.textContent='接続中…';
+  const access=await loginWithCode(code);
+  if(access&&(access.role==='warehouse'||access.role==='admin')){
+    currentAccess=access;
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('roleLabel').textContent=access.label;
+    await loadBrands();await loadData();setupRealtime();
+  } else {
+    if(access)showToast('この画面は倉庫・管理者専用です');
+    else{document.getElementById('loginError').style.display='block';setTimeout(()=>document.getElementById('loginError').style.display='none',3000)}
+    btn.disabled=false;btn.textContent='ログイン';
+  }
+}
+document.getElementById('codeInput').addEventListener('keydown',e=>{if(e.key==='Enter')handleLogin()});
+function handleLogout(){currentAccess=null;deliveries=[];document.getElementById('app').style.display='none';document.getElementById('loginScreen').style.display='flex';const b=document.getElementById('loginBtn');b.disabled=false;b.textContent='ログイン';document.getElementById('codeInput').value='';document.getElementById('codeInput').focus()}
+
+async function loadBrands(){
+  const{data}=await supabase.from('brands').select('code,name').order('code');
+  const brands=data||[];
+  ['brandFilter','historyBrandFilter'].forEach(id=>{
+    document.getElementById(id).innerHTML='<option value="">全ブランド</option>'+brands.map(b=>`<option value="${b.code}">${b.code} — ${b.name}</option>`).join('');
+  });
+}
+
+async function loadData(){
+  deliveries=await fetchWarehouseDeliveries();
+  notifications=await fetchUnnotifiedChanges();
+  renderAll();
+}
+
+function setupRealtime(){
+  subscribeToDeliveryChanges(async()=>{await loadData()});
+  subscribeToChangeLog(async(payload)=>{
+    const ct=payload.new?.change_type;
+    if(['delivery_date_changed','delivery_qty_changed','delivery_added','delivery_removed'].includes(ct)){
+      notifications=await fetchUnnotifiedChanges();
+      renderNotifications();
+      showToast('納品予定に変更がありました');
+    }
+  });
+}
+
+function switchTab(t){document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===`panel-${t}`))}
+function setQF(qf){quickFilter=qf;document.querySelectorAll('.qf-btn').forEach(b=>b.classList.toggle('active',b.dataset.qf===qf));renderSchedule()}
+
+function renderAll(){renderNotifications();renderSummary();renderSchedule();renderHistory()}
+
+function renderNotifications(){
+  const banner=document.getElementById('notifBanner');const list=document.getElementById('notifList');
+  if(!notifications.length){banner.classList.remove('show');return}
+  banner.classList.add('show');
+  list.innerHTML=notifications.map(n=>{
+    const sku=n.orders?.sku||'';const detail=`${n.field_name||''}${n.old_value?' '+n.old_value+' →':''}${n.new_value?' '+n.new_value:''}`;
+    return`<li><span class="notif-sku">${escapeHtml(sku)}</span>（${n.order_id}）<br><span class="notif-change">${escapeHtml(detail)}</span></li>`;
+  }).join('');
+}
+
+async function dismissNotif(){
+  const ids=notifications.map(n=>n.id);
+  if(ids.length)await markNotified(ids);
+  notifications=[];
+  document.getElementById('notifBanner').classList.remove('show');
+}
+
+function renderSummary(){
+  const sched=deliveries.filter(d=>d.delivery_status==='scheduled');
+  document.getElementById('sumOverdue').textContent=sched.filter(d=>isOverdue(d.scheduled_date)).length;
+  document.getElementById('sumToday').textContent=sched.filter(d=>isToday(d.scheduled_date)).length;
+  document.getElementById('sumWeek').textContent=sched.filter(d=>isThisWeek(d.scheduled_date)).length;
+  document.getElementById('sumAll').textContent=sched.length;
+  const tc=sched.filter(d=>isToday(d.scheduled_date)).length+sched.filter(d=>isOverdue(d.scheduled_date)).length;
+  document.getElementById('todayBadge').textContent=tc;
+}
+
+function renderSchedule(){
+  let items=deliveries.filter(d=>d.delivery_status==='scheduled');
+  if(quickFilter==='overdue')items=items.filter(d=>isOverdue(d.scheduled_date));
+  else if(quickFilter==='today')items=items.filter(d=>isToday(d.scheduled_date));
+  else if(quickFilter==='week')items=items.filter(d=>isThisWeek(d.scheduled_date));
+  else if(quickFilter==='nextweek')items=items.filter(d=>isNextWeek(d.scheduled_date));
+  const brand=document.getElementById('brandFilter').value;
+  if(brand)items=items.filter(d=>d.brand_code===brand);
+  const q=document.getElementById('searchInput').value.trim().toLowerCase();
+  if(q)items=items.filter(d=>d.sku.toLowerCase().includes(q)||d.product_name.toLowerCase().includes(q));
+  items.sort((a,b)=>a.scheduled_date.localeCompare(b.scheduled_date));
+  const list=document.getElementById('scheduleList');
+  if(!items.length){list.innerHTML=`<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">該当する納品予定はありません</div></div>`;return}
+  let html='',lastDate='';
+  for(const item of items){
+    if(item.scheduled_date!==lastDate){lastDate=item.scheduled_date;html+=`<div class="date-group-header"><span>${formatDateDisplay(item.scheduled_date)}（${dayLabel(item.scheduled_date)}）</span><div class="date-group-line"></div></div>`}
+    html+=renderCard(item);
+  }
+  list.innerHTML=html;
+}
+
+function renderHistory(){
+  let items=deliveries.filter(d=>d.delivery_status==='delivered'||d.delivery_status==='inspected');
+  const brand=document.getElementById('historyBrandFilter').value;
+  if(brand)items=items.filter(d=>d.brand_code===brand);
+  const q=document.getElementById('historySearch').value.trim().toLowerCase();
+  if(q)items=items.filter(d=>d.sku.toLowerCase().includes(q)||d.product_name.toLowerCase().includes(q));
+  items.sort((a,b)=>(b.actual_delivery_date||b.scheduled_date).localeCompare(a.actual_delivery_date||a.scheduled_date));
+  const list=document.getElementById('historyList');
+  if(!items.length){list.innerHTML=`<div class="empty-state"><div class="empty-state-icon">✓</div><div class="empty-state-text">履歴はありません</div></div>`;return}
+  list.innerHTML=items.map(i=>renderCard(i)).join('');
+}
+
+function renderCard(item){
+  const esc=escapeHtml;
+  const overdue=item.delivery_status==='scheduled'&&isOverdue(item.scheduled_date);
+  const today=item.delivery_status==='scheduled'&&isToday(item.scheduled_date);
+  const changed=item.recently_changed&&item.delivery_status==='scheduled';
+  let cc='delivery-card';if(overdue)cc+=' is-overdue';else if(today)cc+=' is-today';else if(changed)cc+=' is-changed';
+  let dateBadge='';
+  if(overdue)dateBadge=`<span class="dc-date-label dc-overdue">${dayLabel(item.scheduled_date)}</span>`;
+  else if(today)dateBadge=`<span class="dc-date-label dc-today">本日</span>`;
+  const tmrw=new Date(TODAY);tmrw.setDate(tmrw.getDate()+1);
+  if(item.scheduled_date===todayStr(tmrw))dateBadge=`<span class="dc-date-label dc-tomorrow">明日</span>`;
+  if(changed)dateBadge+=`<span class="dc-date-label dc-changed-badge">変更あり</span>`;
+  const sb=item.delivery_status==='inspected'?'<span class="badge badge-inspected">検品済</span>':item.delivery_status==='delivered'?'<span class="badge badge-delivered">納品済</span>':'<span class="badge badge-scheduled">予定</span>';
+  let action='';
+  if(item.delivery_status==='scheduled'){
+    action=`<div class="dc-action-row"><div class="dc-action-group"><span class="dc-action-label">納品日を記録</span><input type="date" class="dc-action-input" id="act-del-${item.delivery_id}"></div><button class="btn btn-primary btn-sm" onclick="doRecordDelivery('${item.delivery_id}')">納品を記録</button></div>`;
+  } else if(item.delivery_status==='delivered'){
+    action=`<div class="dc-action-row"><div class="dc-action-group"><span class="dc-action-label">納品日</span><input type="date" class="dc-action-input" value="${item.actual_delivery_date||''}" disabled></div><div class="dc-action-group"><span class="dc-action-label">検品完了日を記録</span><input type="date" class="dc-action-input" id="act-ins-${item.delivery_id}"></div><button class="btn btn-primary btn-sm" onclick="doRecordInspection('${item.delivery_id}')">検品完了</button></div>`;
+  } else {
+    action=`<div class="dc-action-row"><div class="dc-action-group"><span class="dc-action-label">納品日</span><input type="date" class="dc-action-input" value="${item.actual_delivery_date||''}" disabled></div><div class="dc-action-group"><span class="dc-action-label">検品完了日</span><input type="date" class="dc-action-input" value="${item.inspection_date||''}" disabled></div></div>`;
+  }
+  return`<div class="${cc}" id="dcard-${item.delivery_id}"><div class="dc-header" onclick="document.getElementById('dcard-${item.delivery_id}').classList.toggle('expanded')"><div class="dc-info"><div class="dc-date-row"><span class="dc-date">${formatDateDisplay(item.scheduled_date)}</span>${dateBadge}</div><div class="dc-sku">${esc(item.sku)}</div><div class="dc-name">${esc(item.product_name)}</div><div class="dc-meta"><div class="dc-meta-item"><span class="dc-meta-label">発注番号</span> ${item.order_id}</div><div class="dc-meta-item"><span class="dc-meta-label">数量</span> ${item.quantity}</div></div></div><div class="dc-right"><span class="brand-tag">${item.brand_code}</span>${sb}</div></div><div class="dc-body"><div class="dc-detail-grid"><div class="dc-detail-item"><div class="dc-detail-label">納品予定日</div><div class="dc-detail-value">${formatDateDisplay(item.scheduled_date)}</div></div><div class="dc-detail-item"><div class="dc-detail-label">数量</div><div class="dc-detail-value">${item.quantity}個</div></div><div class="dc-detail-item"><div class="dc-detail-label">品番</div><div class="dc-detail-value">${esc(item.sku)}</div></div><div class="dc-detail-item"><div class="dc-detail-label">発注番号</div><div class="dc-detail-value">${item.order_id}</div></div></div>${item.note?`<div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px"><span style="color:var(--text-tertiary)">備考：</span>${esc(item.note)}</div>`:''}${action}</div></div>`;
+}
+
+function todayStr(d){const t=d||new Date();return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')}
+
+async function doRecordDelivery(deliveryId){
+  const input=document.getElementById(`act-del-${deliveryId}`);
+  if(!input||!input.value){showToast('納品日を選択してください');return}
+  const item=deliveries.find(d=>d.delivery_id===deliveryId);
+  showModal('納品を記録',`<strong>${escapeHtml(item.sku)}</strong>（${item.quantity}個）<br>納品日：${formatDateDisplay(input.value)}<br><br>記録してよろしいですか？`,async()=>{
+    closeModal();
+    const ok=await recordDelivery(deliveryId,input.value,currentAccess.code);
+    if(ok){await loadData();showToast(`${item.sku} の納品を記録しました`)}else showToast('エラーが発生しました');
+  });
+}
+
+async function doRecordInspection(deliveryId){
+  const input=document.getElementById(`act-ins-${deliveryId}`);
+  if(!input||!input.value){showToast('検品完了日を選択してください');return}
+  const item=deliveries.find(d=>d.delivery_id===deliveryId);
+  showModal('検品完了を記録',`<strong>${escapeHtml(item.sku)}</strong>（${item.quantity}個）<br>検品完了日：${formatDateDisplay(input.value)}<br><br>記録してよろしいですか？`,async()=>{
+    closeModal();
+    const ok=await recordInspection(deliveryId,input.value,currentAccess.code);
+    if(ok){await loadData();showToast(`${item.sku} の検品完了を記録しました`)}else showToast('エラーが発生しました');
+  });
+}
+
+function showModal(title,body,onConfirm){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;document.getElementById('modalConfirmBtn').onclick=onConfirm;document.getElementById('confirmModal').classList.add('show')}
+function closeModal(){document.getElementById('confirmModal').classList.remove('show')}
+let toastTimer;function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3500)}
+document.getElementById('confirmModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+</script>
+</body>
+</html>

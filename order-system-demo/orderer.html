@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>発注管理 - 発注者画面</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap');
+  :root{--bg:#f5f5f0;--surface:#fff;--surface-alt:#fafaf7;--border:#e0ddd5;--border-light:#eeece6;--text:#2c2c2c;--text-secondary:#6b6b6b;--text-tertiary:#999;--accent:#1a6b4a;--accent-light:#e8f4ee;--accent-hover:#15573c;--warning:#c4700a;--warning-light:#fef3e0;--warning-bg:#fff8ed;--danger:#c0392b;--danger-light:#fce8e6;--blue:#2563eb;--blue-light:#eff6ff;--purple:#7c3aed;--purple-light:#f3f0ff;--gray-badge:#8b8b8b;--gray-badge-light:#f0f0ee;--shadow-sm:0 1px 2px rgba(0,0,0,.04);--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);--shadow-md:0 4px 12px rgba(0,0,0,.08);--radius:8px;--radius-lg:12px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:14px;min-height:100vh}
+
+  .login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:48px 40px;width:100%;max-width:380px;box-shadow:var(--shadow-md);text-align:center}
+  .login-box h1{font-size:20px;font-weight:600;margin-bottom:8px}
+  .login-box p{color:var(--text-secondary);font-size:13px;margin-bottom:32px}
+  .login-input{width:100%;padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius);font-size:18px;font-family:inherit;text-align:center;letter-spacing:.15em;font-weight:500;outline:none;transition:border-color .2s}
+  .login-input:focus{border-color:var(--accent)}
+  .login-input::placeholder{letter-spacing:0;font-size:14px;font-weight:400;color:var(--text-tertiary)}
+  .login-btn{width:100%;padding:14px;margin-top:16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .2s}
+  .login-btn:hover{background:var(--accent-hover)}
+  .login-btn:disabled{opacity:.5;cursor:not-allowed}
+  .login-hint{font-size:11px;color:var(--text-tertiary);margin-top:16px}
+  .login-error{color:var(--danger);font-size:12px;margin-top:12px;display:none}
+
+  .app{display:none}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .header-left{display:flex;align-items:center;gap:16px}
+  .header-title{font-size:15px;font-weight:600}
+  .role-badge{background:var(--purple-light);color:var(--purple);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+  .logout-btn{font-size:12px;color:var(--text-secondary);background:none;border:1px solid var(--border);padding:6px 14px;border-radius:var(--radius);cursor:pointer;font-family:inherit;transition:all .2s}
+  .logout-btn:hover{background:var(--bg)}
+
+  .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;overflow-x:auto}
+  .tab{padding:14px 18px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;user-select:none}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab-badge{background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:6px;vertical-align:middle}
+
+  .content{max-width:1000px;margin:0 auto;padding:24px}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+
+  .summary-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  .summary-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;flex:1;min-width:100px;box-shadow:var(--shadow-sm);cursor:pointer;transition:all .2s}
+  .summary-item:hover{box-shadow:var(--shadow)}
+  .summary-item.active-filter{border-color:var(--accent);background:var(--accent-light)}
+  .summary-number{font-size:22px;font-weight:700;line-height:1;margin-bottom:4px}
+  .summary-label{font-size:11px;color:var(--text-secondary)}
+  .sn-pending{color:var(--warning)}.sn-answered{color:var(--accent)}.sn-partial{color:var(--blue)}.sn-complete{color:var(--text)}.sn-cancelled{color:var(--gray-badge)}
+
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+  .search-input{flex:1;min-width:180px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;outline:none;background:var(--surface);transition:border-color .2s}
+  .search-input:focus{border-color:var(--accent)}
+  .search-input::placeholder{color:var(--text-tertiary)}
+  .filter-select{padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;outline:none;background:var(--surface);cursor:pointer;min-width:130px}
+
+  .order-list{display:flex;flex-direction:column;gap:10px}
+  .order-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow .2s}
+  .order-card:hover{box-shadow:var(--shadow)}
+  .order-card.cancelled{opacity:.6}
+  .order-card-header{padding:14px 20px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;cursor:pointer}
+  .order-card-info{flex:1;min-width:0}
+  .order-sku{font-size:14px;font-weight:600;letter-spacing:.02em;margin-bottom:1px}
+  .order-name{font-size:12px;color:var(--text-secondary);margin-bottom:6px}
+  .order-meta{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--text-secondary)}
+  .order-meta-item{display:flex;align-items:center;gap:4px}
+  .order-meta-label{color:var(--text-tertiary)}
+  .order-header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap}
+  .badge-pending{background:var(--warning-light);color:var(--warning)}
+  .badge-answered{background:var(--accent-light);color:var(--accent)}
+  .badge-partial{background:var(--blue-light);color:var(--blue)}
+  .badge-complete{background:#e8e8e5;color:var(--text)}
+  .badge-cancelled{background:var(--gray-badge-light);color:var(--gray-badge);text-decoration:line-through}
+  .brand-tag{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;background:var(--bg);color:var(--text-secondary);letter-spacing:.05em}
+
+  .order-card-body{display:none;border-top:1px solid var(--border-light);padding:20px;background:var(--surface-alt)}
+  .order-card.expanded .order-card-body{display:block}
+  .note-text{font-size:12px;color:var(--text-secondary);background:var(--warning-bg);border:1px solid #f0e4cc;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;line-height:1.7}
+  .note-text::before{content:'📝 備考：';font-weight:600}
+  .section-title{font-size:13px;font-weight:600;margin-bottom:10px}
+  .delivery-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;background:var(--surface);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border-light)}
+  .delivery-table th{text-align:left;padding:9px 14px;background:var(--bg);font-weight:500;font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border-light)}
+  .delivery-table td{padding:9px 14px;border-bottom:1px solid var(--border-light);vertical-align:middle}
+  .delivery-table tr:last-child td{border-bottom:none}
+  .ds-scheduled{color:var(--warning);font-weight:500}.ds-delivered{color:var(--blue);font-weight:500}.ds-inspected{color:var(--accent);font-weight:500}
+  .cancelled-label{display:inline-block;padding:6px 14px;border-radius:var(--radius);background:var(--gray-badge-light);color:var(--gray-badge);font-size:13px;font-weight:500}
+
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  .btn{padding:8px 16px;border-radius:var(--radius);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .2s;border:1px solid transparent;display:inline-flex;align-items:center;gap:6px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover:not(:disabled){background:var(--accent-hover)}
+  .btn-secondary{background:var(--surface);color:var(--text);border-color:var(--border)}.btn-secondary:hover{background:var(--bg)}
+  .btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#a93226}
+  .btn-danger-outline{background:none;color:var(--danger);border-color:var(--danger)}.btn-danger-outline:hover{background:var(--danger-light)}
+  .btn-sm{padding:6px 12px;font-size:11px}
+
+  .form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;box-shadow:var(--shadow-sm);margin-bottom:20px}
+  .form-title{font-size:15px;font-weight:600;margin-bottom:20px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .form-group{display:flex;flex-direction:column;gap:4px}
+  .form-group.full{grid-column:1/-1}
+  .form-label{font-size:12px;font-weight:500;color:var(--text-secondary)}
+  .form-input,.form-textarea{padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
+  .form-input:focus,.form-textarea:focus{border-color:var(--accent)}
+  .form-textarea{resize:vertical;min-height:60px}
+
+  .log-list{display:flex;flex-direction:column}
+  .log-item{display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border-light);font-size:13px;align-items:flex-start}
+  .log-item:last-child{border-bottom:none}
+  .log-time{font-size:12px;color:var(--text-tertiary);white-space:nowrap;min-width:130px;padding-top:1px}
+  .log-content{flex:1}
+  .log-order{font-weight:600;color:var(--accent);font-size:12px;margin-bottom:2px}
+  .log-detail{color:var(--text-secondary);font-size:12px;line-height:1.6}
+  .log-change-old{color:var(--danger);text-decoration:line-through}
+  .log-change-new{color:var(--accent);font-weight:500}
+  .log-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle}
+  .log-badge-change{background:var(--warning-light);color:var(--warning)}
+  .log-badge-cancel{background:var(--danger-light);color:var(--danger)}
+  .log-badge-new{background:var(--accent-light);color:var(--accent)}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--surface);border-radius:var(--radius-lg);width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.15);overflow:hidden}
+  .modal-header{padding:20px 24px;border-bottom:1px solid var(--border-light);font-weight:600;font-size:15px}
+  .modal-body{padding:24px;font-size:13px;line-height:1.7;color:var(--text-secondary)}
+  .modal-footer{padding:16px 24px;border-top:1px solid var(--border-light);display:flex;gap:8px;justify-content:flex-end}
+
+  .toast{position:fixed;bottom:24px;right:24px;background:#2c2c2c;color:#fff;padding:14px 20px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-md);z-index:1000;transform:translateY(100px);opacity:0;transition:all .3s ease;max-width:360px}
+  .toast.show{transform:translateY(0);opacity:1}
+  .empty-state{text-align:center;padding:60px 20px;color:var(--text-secondary)}
+  .empty-state-icon{font-size:40px;margin-bottom:12px;opacity:.5}
+  .empty-state-text{font-size:14px;font-weight:500;margin-bottom:4px}
+  .empty-state-sub{font-size:12px;color:var(--text-tertiary)}
+  .loading{text-align:center;padding:40px;color:var(--text-tertiary);font-size:13px}
+
+  @media(max-width:640px){.content{padding:16px}.order-card-header{padding:12px 14px;flex-direction:column;gap:8px}.summary-bar{gap:8px}.summary-item{min-width:80px;padding:10px 12px}.summary-number{font-size:18px}.form-grid{grid-template-columns:1fr}.tabs{padding:0 12px}.tab{padding:12px 12px;font-size:12px}.header{padding:0 16px}.log-item{flex-direction:column;gap:4px}.log-time{min-width:auto}.toolbar{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h1>発注管理システム</h1>
+    <p>管理者コードを入力してください</p>
+    <input type="text" class="login-input" id="codeInput" placeholder="コードを入力" autofocus>
+    <button class="login-btn" id="loginBtn" onclick="handleLogin()">ログイン</button>
+    <div class="login-hint">管理者：XXX</div>
+    <div class="login-error" id="loginError">該当するコードが見つかりません</div>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <div class="header">
+    <div class="header-left"><span class="header-title">発注管理</span><span class="role-badge" id="roleLabel"></span></div>
+    <div class="header-right"><button class="logout-btn" onclick="handleLogout()">ログアウト</button></div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="orders" onclick="switchTab('orders')">発注一覧</div>
+    <div class="tab" data-tab="neworder" onclick="switchTab('neworder')">＋ 新規発注</div>
+    <div class="tab" data-tab="changelog" onclick="switchTab('changelog')">変更ログ <span class="tab-badge" id="logCount">0</span></div>
+  </div>
+  <div class="content">
+    <!-- Orders -->
+    <div class="tab-panel active" id="panel-orders">
+      <div class="summary-bar" id="summaryBar"></div>
+      <div class="toolbar">
+        <input type="text" class="search-input" id="searchInput" placeholder="品番・商品名・発注番号で検索…" oninput="renderOrders()">
+        <select class="filter-select" id="brandFilter" onchange="renderOrders()"><option value="">全ブランド</option></select>
+        <select class="filter-select" id="statusFilter" onchange="renderOrders()">
+          <option value="">全ステータス</option><option value="pending">未回答</option><option value="answered">回答済</option>
+          <option value="partial">一部納品</option><option value="complete">納品完了</option><option value="cancelled">取消</option>
+        </select>
+      </div>
+      <div class="order-list" id="orderList"><div class="loading">読み込み中…</div></div>
+    </div>
+    <!-- New Order -->
+    <div class="tab-panel" id="panel-neworder">
+      <div class="form-card">
+        <div class="form-title">新規発注</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">品番（SKU）</label><input type="text" class="form-input" id="newSku" placeholder="例：BGS-SLP-WH-70"></div>
+          <div class="form-group"><label class="form-label">商品名</label><input type="text" class="form-input" id="newName" placeholder="商品名を入力"></div>
+          <div class="form-group"><label class="form-label">数量</label><input type="number" class="form-input" id="newQty" min="1" placeholder="数量"></div>
+          <div class="form-group"><label class="form-label">納品希望日</label><input type="date" class="form-input" id="newDesiredDate"></div>
+          <div class="form-group full"><label class="form-label">備考</label><textarea class="form-textarea" id="newNote" placeholder="メーカーへの指示事項があれば記入"></textarea></div>
+        </div>
+        <div class="btn-row" style="margin-top:20px;justify-content:flex-end"><button class="btn btn-primary" id="submitOrderBtn" onclick="submitNewOrder()">発注を登録する</button></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-tertiary);line-height:1.7">※ 品番の先頭からブランドを自動判定します。<br>※ 発注番号は自動採番されます。</div>
+    </div>
+    <!-- Change Log -->
+    <div class="tab-panel" id="panel-changelog">
+      <div class="toolbar"><select class="filter-select" id="logBrandFilter" onchange="renderChangeLog()"><option value="">全ブランド</option></select></div>
+      <div class="log-list" id="logList"><div class="loading">読み込み中…</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmModal"><div class="modal"><div class="modal-header" id="modalTitle">確認</div><div class="modal-body" id="modalBody"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal()">キャンセル</button><button class="btn" id="modalConfirmBtn">確定</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+const STATUS_LABELS={pending:'未回答',answered:'回答済',partial:'一部納品',complete:'納品完了',cancelled:'取消'};
+const STATUS_BADGE={pending:'badge-pending',answered:'badge-answered',partial:'badge-partial',complete:'badge-complete',cancelled:'badge-cancelled'};
+
+let currentAccess=null;
+let orders=[];
+let changeLogs=[];
+let brands=[];
+let statusFilterFromSummary='';
+
+async function handleLogin(){
+  const code=document.getElementById('codeInput').value.trim();
+  if(!code)return;
+  const btn=document.getElementById('loginBtn');
+  btn.disabled=true;btn.textContent='接続中…';
+  const access=await loginWithCode(code);
+  if(access&&(access.role==='admin'||access.role==='manufacturer')){
+    currentAccess=access;
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('roleLabel').textContent=access.label;
+    await loadBrands();
+    await loadData();
+    setupRealtime();
+  } else {
+    document.getElementById('loginError').style.display='block';
+    setTimeout(()=>document.getElementById('loginError').style.display='none',3000);
+    btn.disabled=false;btn.textContent='ログイン';
+  }
+}
+document.getElementById('codeInput').addEventListener('keydown',e=>{if(e.key==='Enter')handleLogin()});
+function handleLogout(){currentAccess=null;orders=[];changeLogs=[];document.getElementById('app').style.display='none';document.getElementById('loginScreen').style.display='flex';const b=document.getElementById('loginBtn');b.disabled=false;b.textContent='ログイン';document.getElementById('codeInput').value='';document.getElementById('codeInput').focus()}
+
+async function loadBrands(){
+  const{data}=await supabase.from('brands').select('code,name').order('code');
+  brands=data||[];
+  ['brandFilter','logBrandFilter'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.innerHTML='<option value="">全ブランド</option>'+brands.map(b=>`<option value="${b.code}">${b.code} — ${b.name}</option>`).join('');
+    if(currentAccess.role!=='admin'&&currentAccess.brand_code){el.value=currentAccess.brand_code;el.disabled=true}
+  });
+}
+
+async function loadData(){
+  const brandFilter=currentAccess.role==='admin'?null:currentAccess.brand_code;
+  orders=await fetchOrdersWithDeliveries(brandFilter);
+  changeLogs=await fetchChangeLogs(brandFilter);
+  renderAll();
+}
+
+function setupRealtime(){subscribeToDeliveryChanges(async()=>{await loadData()})}
+function switchTab(t){document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===`panel-${t}`))}
+
+function renderAll(){renderSummary();renderOrders();renderChangeLog()}
+
+function renderSummary(){
+  const counts={pending:0,answered:0,partial:0,complete:0,cancelled:0};
+  let items=orders;
+  const bf=currentAccess.role==='admin'?document.getElementById('brandFilter').value:currentAccess.brand_code;
+  if(bf)items=items.filter(o=>o.brand_code===bf);
+  items.forEach(o=>{if(counts[o.status]!==undefined)counts[o.status]++});
+  document.getElementById('summaryBar').innerHTML=Object.entries(counts).map(([k,v])=>{
+    const active=statusFilterFromSummary===k?'active-filter':'';
+    return`<div class="summary-item ${active}" onclick="toggleSummaryFilter('${k}')"><div class="summary-number sn-${k}">${v}</div><div class="summary-label">${STATUS_LABELS[k]}</div></div>`;
+  }).join('');
+  document.getElementById('logCount').textContent=changeLogs.length;
+}
+
+function toggleSummaryFilter(s){statusFilterFromSummary=statusFilterFromSummary===s?'':s;document.getElementById('statusFilter').value='';renderSummary();renderOrders()}
+
+function renderOrders(){
+  if(document.getElementById('statusFilter').value){statusFilterFromSummary='';renderSummary()}
+  let items=[...orders];
+  const bf=currentAccess.role==='admin'?document.getElementById('brandFilter').value:currentAccess.brand_code;
+  const sf=statusFilterFromSummary||document.getElementById('statusFilter').value;
+  const q=document.getElementById('searchInput').value.trim().toLowerCase();
+  if(bf)items=items.filter(o=>o.brand_code===bf);
+  if(sf)items=items.filter(o=>o.status===sf);
+  if(q)items=items.filter(o=>o.sku.toLowerCase().includes(q)||o.product_name.toLowerCase().includes(q)||o.id.toLowerCase().includes(q));
+  const priority={pending:0,answered:1,partial:2,complete:3,cancelled:4};
+  items.sort((a,b)=>priority[a.status]-priority[b.status]||b.order_date.localeCompare(a.order_date));
+  const list=document.getElementById('orderList');
+  if(!items.length){list.innerHTML=`<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">該当する発注はありません</div></div>`;return}
+  list.innerHTML=items.map(o=>{
+    const esc=escapeHtml;const ds=o.delivery_schedules||[];
+    const noteHtml=o.note?`<div class="note-text">${esc(o.note)}</div>`:'';
+    let body='';
+    if(o.status==='cancelled'){body=`${noteHtml}<div class="cancelled-label">この発注は取消されました</div>${o.cancel_reason?`<div style="margin-top:8px;font-size:12px;color:var(--text-tertiary)">理由：${esc(o.cancel_reason)}</div>`:''}`}
+    else if(o.status==='pending'){body=`${noteHtml}<div style="color:var(--text-secondary);font-size:13px">メーカーからの回答待ちです。</div><div class="btn-row"><div style="flex:1"></div><button class="btn btn-danger-outline btn-sm" onclick="doCancelOrder('${o.id}')">この発注を取消す</button></div>`}
+    else{const rows=ds.map((d,i)=>{const sc=d.status==='inspected'?'ds-inspected':d.status==='delivered'?'ds-delivered':'ds-scheduled';const sl=d.status==='inspected'?'検品済':d.status==='delivered'?'納品済':'予定';return`<tr><td>${i+1}</td><td>${formatDateDisplay(d.scheduled_date)}</td><td>${d.quantity}</td><td class="${sc}" style="font-size:11px;font-weight:600">${sl}</td><td style="font-size:12px;color:var(--text-tertiary)">${formatDateDisplay(d.actual_delivery_date)}</td></tr>`}).join('');
+    body=`${noteHtml}<div class="section-title">納品予定</div><table class="delivery-table"><thead><tr><th>回</th><th>予定日</th><th>数量</th><th>状態</th><th>納品日</th></tr></thead><tbody>${rows}</tbody></table><div class="btn-row"><div style="flex:1"></div><button class="btn btn-danger-outline btn-sm" onclick="doCancelOrder('${o.id}')">この発注を取消す</button></div>`}
+    return`<div class="order-card ${o.status==='cancelled'?'cancelled':''}" id="card-${o.id}"><div class="order-card-header" onclick="document.getElementById('card-${o.id}').classList.toggle('expanded')"><div class="order-card-info"><div class="order-sku">${esc(o.sku)}</div><div class="order-name">${esc(o.product_name)}</div><div class="order-meta"><div class="order-meta-item"><span class="order-meta-label">発注番号</span>${o.id}</div><div class="order-meta-item"><span class="order-meta-label">数量</span>${o.quantity}</div><div class="order-meta-item"><span class="order-meta-label">希望日</span>${formatDateDisplay(o.desired_date)}</div><div class="order-meta-item"><span class="order-meta-label">発注日</span>${formatDateDisplay(o.order_date)}</div></div></div><div class="order-header-right"><span class="brand-tag">${o.brand_code}</span><span class="badge ${STATUS_BADGE[o.status]}">${STATUS_LABELS[o.status]}</span></div></div><div class="order-card-body">${body}</div></div>`;
+  }).join('');
+}
+
+function renderChangeLog(){
+  const bf=currentAccess.role==='admin'?document.getElementById('logBrandFilter').value:currentAccess.brand_code;
+  let logs=[...changeLogs];
+  if(bf)logs=logs.filter(l=>l.brand_code===bf);
+  const list=document.getElementById('logList');
+  if(!logs.length){list.innerHTML=`<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">変更ログはありません</div></div>`;return}
+  const typeLabels={delivery_created:{label:'新規回答',badge:'log-badge-new'},delivery_date_changed:{label:'日付変更',badge:'log-badge-change'},delivery_qty_changed:{label:'数量変更',badge:'log-badge-change'},delivery_added:{label:'分納追加',badge:'log-badge-change'},delivery_removed:{label:'分納削除',badge:'log-badge-change'},order_cancelled:{label:'取消',badge:'log-badge-cancel'},delivery_recorded:{label:'納品記録',badge:'log-badge-new'},inspection_recorded:{label:'検品完了',badge:'log-badge-new'}};
+  list.innerHTML=logs.map(l=>{
+    const t=typeLabels[l.change_type]||{label:l.change_type,badge:'log-badge-change'};
+    const time=new Date(l.created_at).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+    let detail=`<strong>${escapeHtml(l.field_name||'')}</strong>`;
+    if(l.old_value&&l.new_value)detail+=`：<span class="log-change-old">${escapeHtml(l.old_value)}</span> → <span class="log-change-new">${escapeHtml(l.new_value)}</span>`;
+    else if(l.new_value)detail+=`：${escapeHtml(l.new_value)}`;
+    if(l.changed_by_code)detail+=`<br><span style="color:var(--text-tertiary)">操作者：${escapeHtml(l.changed_by_code)}（${escapeHtml(l.changed_by_role||'')}）</span>`;
+    return`<div class="log-item"><div class="log-time">${time}</div><div class="log-content"><div class="log-order">${l.order_id} ${escapeHtml(l.sku||'')} <span class="brand-tag" style="font-size:9px;padding:2px 6px">${l.brand_code||''}</span> <span class="log-badge ${t.badge}">${t.label}</span></div><div class="log-detail">${detail}</div></div></div>`;
+  }).join('');
+}
+
+async function doCancelOrder(orderId){
+  const order=orders.find(o=>o.id===orderId);
+  const ds=order.delivery_schedules||[];
+  const hasDelivered=ds.some(d=>d.status==='delivered'||d.status==='inspected');
+  let msg=`<strong>${escapeHtml(order.sku)}</strong>（${order.id}）を取消しますか？<br><br>`;
+  if(hasDelivered)msg+=`<span style="color:var(--danger)">⚠ 納品済みの分納があります。</span><br><br>`;
+  msg+='メーカーにメールで通知されます。';
+  showModal('発注の取消',msg,async()=>{
+    closeModal();
+    const ok=await cancelOrder(orderId,'',currentAccess.code);
+    if(ok){await loadData();showToast(`${order.sku} の発注を取消しました`)}else{showToast('エラーが発生しました')}
+  },'btn-danger');
+}
+
+async function submitNewOrder(){
+  const sku=document.getElementById('newSku').value.trim();
+  const name=document.getElementById('newName').value.trim();
+  const qty=parseInt(document.getElementById('newQty').value)||0;
+  const desiredDate=document.getElementById('newDesiredDate').value;
+  const note=document.getElementById('newNote').value.trim();
+  if(!sku||!name||qty<=0||!desiredDate){showToast('すべての必須項目を入力してください');return}
+  // ブランド判定
+  const brand=brands.find(b=>sku.toUpperCase().startsWith(b.code));
+  if(!brand){showToast('品番からブランドを判定できません');return}
+  const btn=document.getElementById('submitOrderBtn');
+  btn.disabled=true;btn.textContent='登録中…';
+  const result=await createOrder({sku:sku.toUpperCase(),product_name:name,unit_price:null,quantity:qty,brand_code:brand.code,desired_date:desiredDate,note});
+  btn.disabled=false;btn.textContent='発注を登録する';
+  if(result){
+    ['newSku','newName','newQty','newDesiredDate','newNote'].forEach(id=>{const el=document.getElementById(id);el.value=''});
+    await loadData();switchTab('orders');
+    showToast(`${result.id} を登録しました`);
+  }else{showToast('エラーが発生しました')}
+}
+
+function showModal(title,body,onConfirm,btnClass){document.getElementById('modalTitle').textContent=title;document.getElementById('modalBody').innerHTML=body;const b=document.getElementById('modalConfirmBtn');b.className=`btn ${btnClass||'btn-primary'}`;b.textContent='確定';b.onclick=onConfirm;document.getElementById('confirmModal').classList.add('show')}
+function closeModal(){document.getElementById('confirmModal').classList.remove('show')}
+let toastTimer;function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3500)}
+document.getElementById('confirmModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+</script>
+</body>
+</html>
