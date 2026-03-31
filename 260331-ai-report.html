@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI活用 実験レポート — 雑誌社向け販促ツール開発</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #fafaf7;
+    --accent: #c23616;
+    --accent-light: #fef0ed;
+    --muted: #6b6b6b;
+    --border: #e0ddd8;
+    --card-bg: #ffffff;
+    --tag-bg: #f0eeea;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.9;
+    font-size: 15px;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 60px 40px 100px;
+  }
+
+  /* ── Header ── */
+  .report-header {
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 32px;
+    margin-bottom: 48px;
+  }
+
+  .report-header .date {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+
+  .report-header h1 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+
+  .report-header .subtitle {
+    font-size: 15px;
+    color: var(--muted);
+    font-weight: 300;
+  }
+
+  /* ── Sections ── */
+  .section {
+    margin-bottom: 56px;
+  }
+
+  .section-label {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 4px 12px;
+    border-radius: 3px;
+    margin-bottom: 16px;
+  }
+
+  .section h2 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .section p {
+    margin-bottom: 16px;
+  }
+
+  /* ── Highlight Box ── */
+  .highlight-box {
+    background: var(--ink);
+    color: #fff;
+    border-radius: 8px;
+    padding: 32px 36px;
+    margin: 32px 0;
+  }
+
+  .highlight-box .big-number {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 48px;
+    font-weight: 900;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .highlight-box .big-number span {
+    font-size: 20px;
+    font-weight: 400;
+    opacity: 0.7;
+  }
+
+  .highlight-box .caption {
+    font-size: 14px;
+    opacity: 0.75;
+    line-height: 1.7;
+  }
+
+  /* ── Tool Cards ── */
+  .tool-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-top: 24px;
+  }
+
+  .tool-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px 32px;
+    position: relative;
+    transition: box-shadow 0.2s;
+  }
+
+  .tool-card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+
+  .tool-card .tool-number {
+    position: absolute;
+    top: -12px;
+    left: 24px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .tool-card h3 {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .tool-card .tool-desc {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    line-height: 1.8;
+  }
+
+  .tool-card .tool-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    background: var(--tag-bg);
+    color: var(--muted);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  .tag.time {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  /* ── Deliverables ── */
+  .deliverables {
+    margin-top: 24px;
+  }
+
+  .deliverable-row {
+    display: flex;
+    align-items: baseline;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+  }
+
+  .deliverable-row:last-child {
+    border-bottom: none;
+  }
+
+  .deliverable-row .d-icon {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-top: 8px;
+  }
+
+  .deliverable-row .d-content {
+    flex: 1;
+  }
+
+  .deliverable-row .d-label {
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  .deliverable-row .d-detail {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .deliverable-row a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    flex-shrink: 0;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .deliverable-row a:hover {
+    border-bottom-color: var(--accent);
+  }
+
+  /* ── Process Flow ── */
+  .process-flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin: 28px 0;
+    position: relative;
+  }
+
+  .process-step {
+    flex: 1;
+    text-align: center;
+    padding: 24px 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    position: relative;
+  }
+
+  .process-step:first-child {
+    border-radius: 8px 0 0 8px;
+  }
+
+  .process-step:last-child {
+    border-radius: 0 8px 8px 0;
+  }
+
+  .process-step:not(:last-child)::after {
+    content: '→';
+    position: absolute;
+    right: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: var(--accent);
+    z-index: 1;
+    background: var(--paper);
+    width: 24px;
+    text-align: center;
+  }
+
+  .process-step .step-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .process-step .step-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .process-step .step-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ── Key Point ── */
+  .key-point {
+    background: var(--accent-light);
+    border-left: 4px solid var(--accent);
+    padding: 20px 24px;
+    border-radius: 0 6px 6px 0;
+    margin: 28px 0;
+  }
+
+  .key-point .kp-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .key-point p {
+    font-size: 14px;
+    line-height: 1.8;
+    margin-bottom: 0;
+  }
+
+  /* ── Conclusion ── */
+  .conclusion-box {
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    padding: 36px;
+    margin-top: 32px;
+  }
+
+  .conclusion-box h2 {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .conclusion-box p {
+    margin-bottom: 12px;
+  }
+
+  .conclusion-box .emphasis {
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* ── Footer ── */
+  .report-footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── Note ── */
+  .note {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .page { padding: 32px 20px 60px; }
+    .report-header h1 { font-size: 22px; }
+    .highlight-box .big-number { font-size: 36px; }
+    .process-flow { flex-direction: column; gap: 12px; }
+    .process-step { border-radius: 8px !important; }
+    .process-step:not(:last-child)::after {
+      content: '↓';
+      right: auto;
+      left: 50%;
+      top: auto;
+      bottom: -18px;
+      transform: translateX(-50%);
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Header -->
+  <header class="report-header">
+    <div class="date">2026.03.31　実験レポート</div>
+    <h1>AI活用による雑誌社向け販促ツール<br>開発実験の報告</h1>
+    <div class="subtitle">— 合計4時間の作業で、3つの実用プロトタイプを構築</div>
+  </header>
+
+  <!-- 01: Overview -->
+  <section class="section">
+    <div class="section-label">01 — 概要</div>
+    <h2>何をやったか</h2>
+    <p>雑誌社の販促業務において、AIで自動化できる領域を探るため、2つの実験プロジェクトに取り組みました。</p>
+    <p>いずれも「アイデアを思いついてから、動くものが手元にある」までを最短で実現することを重視しました。プログラミングの専門知識がなくても、AIとの対話だけでここまで作れるという可能性を示す実験です。</p>
+
+    <div class="highlight-box">
+      <div class="big-number">4<span> 時間</span></div>
+      <div class="caption">合計の実作業時間。AI営業代行に約2時間、AIニュース収集＆動画に約2時間。<br>この時間で3つの動くプロトタイプが完成しました。</div>
+    </div>
+  </section>
+
+  <!-- 02: What We Built -->
+  <section class="section">
+    <div class="section-label">02 — 作ったもの</div>
+    <h2>3つの成果物</h2>
+
+    <div class="tool-cards">
+
+      <!-- Tool 1 -->
+      <div class="tool-card">
+        <div class="tool-number">1</div>
+        <h3>AI営業代行ツール</h3>
+        <p class="tool-desc">
+          雑誌の企画内容に合う広告営業先を、AIが自動でリストアップするツール。編集者が紙面の企画を考える熱量に時間を使えるよう、営業先探しの作業を自動化します。
+        </p>
+        <div class="tool-meta">
+          <span class="tag time">作業時間：約2時間</span>
+          <span class="tag">入力画面 + スプレッドシート出力</span>
+        </div>
+      </div>
+
+      <!-- Tool 2 -->
+      <div class="tool-card">
+        <div class="tool-number">2</div>
+        <h3>AIニュース収集＆記事作成ツール</h3>
+        <p class="tool-desc">
+          雑誌社ならではの取材ネットワークで得た一次情報を、AIがニュース記事として素早く加工。SNSでの情報発信スピードを飛躍的に高めます。投稿用の管理画面から操作可能です。
+        </p>
+        <div class="tool-meta">
+          <span class="tag time">作業時間：約2時間（動画含む）</span>
+          <span class="tag">投稿画面 + スプレッドシート出力</span>
+        </div>
+      </div>
+
+      <!-- Tool 3 -->
+      <div class="tool-card">
+        <div class="tool-number">3</div>
+        <h3>SNS動画（ショート動画）</h3>
+        <p class="tool-desc">
+          ニュースツールと連動し、AIが生成した画像素材をもとにSNS用のショート動画を作成。現時点ではCapCutでの手動編集ですが、将来的には動画生成まで自動化を目指します。
+        </p>
+        <div class="tool-meta">
+          <span class="tag">画像素材：AI生成</span>
+          <span class="tag">動画編集：CapCut（手動）</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Deliverables list -->
+    <h2 style="margin-top: 40px;">成果物一覧・リンク</h2>
+    <div class="deliverables">
+      <div class="deliverable-row">
+        <div class="d-icon"></div>
+        <div class="d-content">
+          <div class="d-label">AI営業代行 — 入力画面（GAS Webアプリ）</div>
+          <div class="d-detail">企画内容を入力すると、AIが営業先候補を自動生成</div>
+        </div>
+        <a href="https://script.google.com/a/macros/digisearch.co.jp/s/AKfycbyD81B2PBqyZLFlALli0p5vyREPWYQPStdwOCCCTEQHMpy6JLnG2kJJHZ2popYQrXtk/exec" target="_blank">開く ↗</a>
+      </div>
+      <div class="deliverable-row">
+        <div class="d-icon"></div>
+        <div class="d-content">
+          <div class="d-label">AI営業代行 — 結果出力スプレッドシート</div>
+          <div class="d-detail">AIが生成した営業先リスト・提案内容の出力先</div>
+        </div>
+        <a href="https://docs.google.com/spreadsheets/d/1r5BxvYDJvvnT52yRhvCUNn8uN_yedemkqoGdAJupqqU/edit?usp=sharing" target="_blank">開く ↗</a>
+      </div>
+      <div class="deliverable-row">
+        <div class="d-icon"></div>
+        <div class="d-content">
+          <div class="d-label">AIニュース — 投稿画面（GAS Webアプリ）</div>
+          <div class="d-detail">一次情報を入力し、AIがニュース記事を自動生成</div>
+        </div>
+        <a href="https://script.google.com/a/macros/digisearch.co.jp/s/AKfycby1dYKOtKHzImLYMaS2wAdNRn_sFul-9lS2aXHteY84YQQ6gIvR97oLiZ2kgLUnJLUi/exec" target="_blank">開く ↗</a>
+      </div>
+      <div class="deliverable-row">
+        <div class="d-icon"></div>
+        <div class="d-content">
+          <div class="d-label">AIニュース — 出力スプレッドシート</div>
+          <div class="d-detail">生成されたニュース記事の蓄積・管理用</div>
+        </div>
+        <a href="https://docs.google.com/spreadsheets/d/15Cw9qXLL0PaXuffjTX9n6c7ZW__qDRmff_Tin0CvsTM/edit?gid=929671232#gid=929671232" target="_blank">開く ↗</a>
+      </div>
+      <div class="deliverable-row">
+        <div class="d-icon"></div>
+        <div class="d-content">
+          <div class="d-label">SNS動画サンプル</div>
+          <div class="d-detail">AI生成画像 + CapCutで作成したショート動画</div>
+        </div>
+        <a href="https://github.com/gs-honda/test/issues/1#issue-4175272333" target="_blank">開く ↗</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03: Process -->
+  <section class="section">
+    <div class="section-label">03 — 作業プロセス</div>
+    <h2>どうやって作ったか</h2>
+
+    <div class="process-flow">
+      <div class="process-step">
+        <div class="step-num">STEP 1</div>
+        <div class="step-title">要件整理</div>
+        <div class="step-desc">Claudeに「こういうものを作りたい」と相談</div>
+      </div>
+      <div class="process-step">
+        <div class="step-num">STEP 2</div>
+        <div class="step-title">コード生成</div>
+        <div class="step-desc">Claudeがコードを作成、実装手順も提示</div>
+      </div>
+      <div class="process-step">
+        <div class="step-num">STEP 3</div>
+        <div class="step-title">GASにデプロイ</div>
+        <div class="step-desc">手順に沿ってGASプロジェクトに反映</div>
+      </div>
+      <div class="process-step">
+        <div class="step-num">STEP 4</div>
+        <div class="step-title">動作確認</div>
+        <div class="step-desc">テスト・修正を繰り返して完成</div>
+      </div>
+    </div>
+
+    <div class="key-point">
+      <div class="kp-title">技術選定のポイント</div>
+      <p>今回、すべてのツールを<strong>Google Apps Script（GAS）</strong>で構築しました。GASを選んだ理由は明確で、サーバーの管理が不要、Googleアカウントだけで動作し、スプレッドシートとの連携も簡単だからです。PHPやPython、Node.jsなどサーバーサイドの技術に手を出さないことで、非エンジニアでも手順通りに実装・運用できる構成になっています。</p>
+    </div>
+
+    <div class="key-point">
+      <div class="kp-title">運用時の注意点</div>
+      <p>各ツールのAI機能は<strong>Claude API</strong>を利用しています。今回のテストではAPI利用料として約10ドル（約1,500円）を使用しました。本格運用時はAI処理の量に応じたAPI費用が発生します。</p>
+    </div>
+  </section>
+
+  <!-- 04: Conclusion -->
+  <section class="section">
+    <div class="section-label">04 — 結論</div>
+
+    <div class="conclusion-box">
+      <h2>0.5人/月の投下で、実用レベルのツールが作れる</h2>
+      <p>今回の実験で、合計4時間（0.5日相当）の作業で3つの動くプロトタイプが完成しました。</p>
+      <p>月に換算すれば<span class="emphasis">0.5人/月程度のリソース投下</span>でも、雑誌社の販促業務を実際に変え得るツール群を構築・運用できる可能性があります。</p>
+      <p>重要なのは「最初のアプローチ」です。GASプロジェクトのように、なるべく簡単に・最小構成で動くものを作る方針を取ることで、アイデアから実装までの距離を劇的に縮められます。</p>
+      <p>今回はプロトタイプの段階ですが、ここから実運用に向けた改善を重ねることで、編集者が企画に集中し、情報発信のスピードを上げる仕組みとして十分に機能すると考えています。</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="report-footer">
+    <span>DigiSearch Inc.</span>
+    <span>2026年3月</span>
+  </footer>
+
+</div>
+
+</body>
+</html>
