@@ -13,14 +13,15 @@ const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
 const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
 
 // ── Supabase Client 初期化 ──
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// CDNが window.supabase にライブラリを公開するため、変数名を db にする
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ══════════════════════════════════════════════════════════════
 // 認証（アクセスコード方式）
 // ══════════════════════════════════════════════════════════════
 
 async function loginWithCode(code) {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('brand_access_codes')
     .select('code, role, brand_code, label, email')
     .eq('code', code.toUpperCase())
@@ -85,7 +86,7 @@ async function fetchOrdersWithDeliveries(brandCode) {
 
 // 新規発注を作成
 async function createOrder({ sku, product_name, unit_price, quantity, brand_code, desired_date, note }) {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('orders')
     .insert({
       sku,
@@ -105,7 +106,7 @@ async function createOrder({ sku, product_name, unit_price, quantity, brand_code
 
 // 発注を取消
 async function cancelOrder(orderId, reason, accessCode) {
-  const { error: updateError } = await supabase
+  const { error: updateError } = await db
     .from('orders')
     .update({
       status: 'cancelled',
@@ -117,7 +118,7 @@ async function cancelOrder(orderId, reason, accessCode) {
   if (updateError) { console.error('cancelOrder error:', updateError); return false; }
 
   // 変更ログに取消を記録（トリガーはdelivery_schedules用なので、取消はアプリ側で記録）
-  await supabase.from('delivery_change_logs').insert({
+  await db.from('delivery_change_logs').insert({
     order_id: orderId,
     change_type: 'order_cancelled',
     field_name: '発注取消',
@@ -142,7 +143,7 @@ async function submitDeliverySchedules(orderId, schedules, accessCode) {
     sort_order: i + 1,
   }));
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('delivery_schedules')
     .insert(rows)
     .select();
@@ -152,7 +153,7 @@ async function submitDeliverySchedules(orderId, schedules, accessCode) {
   // changed_by情報をログに追記（トリガーが作ったログのchanged_byを更新）
   if (data) {
     for (const ds of data) {
-      await supabase
+      await db
         .from('delivery_change_logs')
         .update({ changed_by_code: accessCode, changed_by_role: 'manufacturer' })
         .eq('delivery_schedule_id', ds.id)
@@ -165,7 +166,7 @@ async function submitDeliverySchedules(orderId, schedules, accessCode) {
 
 // メーカーが納品予定を更新（既存行の日付・数量変更）
 async function updateDeliverySchedule(deliveryId, scheduledDate, quantity, accessCode) {
-  const { error } = await supabase
+  const { error } = await db
     .from('delivery_schedules')
     .update({ scheduled_date: scheduledDate, quantity })
     .eq('id', deliveryId);
@@ -173,7 +174,7 @@ async function updateDeliverySchedule(deliveryId, scheduledDate, quantity, acces
   if (error) { console.error('updateDeliverySchedule error:', error); return false; }
 
   // changed_by情報をログに追記
-  await supabase
+  await db
     .from('delivery_change_logs')
     .update({ changed_by_code: accessCode, changed_by_role: 'manufacturer' })
     .eq('delivery_schedule_id', deliveryId)
@@ -185,7 +186,7 @@ async function updateDeliverySchedule(deliveryId, scheduledDate, quantity, acces
 
 // メーカーが分納を追加
 async function addDeliverySchedule(orderId, scheduledDate, quantity, sortOrder, accessCode) {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('delivery_schedules')
     .insert({
       order_id: orderId,
@@ -200,7 +201,7 @@ async function addDeliverySchedule(orderId, scheduledDate, quantity, sortOrder, 
 
   // changed_by更新
   if (data) {
-    await supabase
+    await db
       .from('delivery_change_logs')
       .update({ changed_by_code: accessCode, changed_by_role: 'manufacturer' })
       .eq('delivery_schedule_id', data.id)
@@ -212,7 +213,7 @@ async function addDeliverySchedule(orderId, scheduledDate, quantity, sortOrder, 
 
 // 分納を削除
 async function removeDeliverySchedule(deliveryId) {
-  const { error } = await supabase
+  const { error } = await db
     .from('delivery_schedules')
     .delete()
     .eq('id', deliveryId);
@@ -223,7 +224,7 @@ async function removeDeliverySchedule(deliveryId) {
 
 // 倉庫が納品日を記録
 async function recordDelivery(deliveryId, actualDate, accessCode) {
-  const { error } = await supabase
+  const { error } = await db
     .from('delivery_schedules')
     .update({
       status: 'delivered',
@@ -234,7 +235,7 @@ async function recordDelivery(deliveryId, actualDate, accessCode) {
   if (error) { console.error('recordDelivery error:', error); return false; }
 
   // changed_by更新
-  await supabase
+  await db
     .from('delivery_change_logs')
     .update({ changed_by_code: accessCode, changed_by_role: 'warehouse' })
     .eq('delivery_schedule_id', deliveryId)
@@ -246,7 +247,7 @@ async function recordDelivery(deliveryId, actualDate, accessCode) {
 
 // 倉庫が検品完了を記録
 async function recordInspection(deliveryId, inspectionDate, accessCode) {
-  const { error } = await supabase
+  const { error } = await db
     .from('delivery_schedules')
     .update({
       status: 'inspected',
@@ -257,7 +258,7 @@ async function recordInspection(deliveryId, inspectionDate, accessCode) {
   if (error) { console.error('recordInspection error:', error); return false; }
 
   // changed_by更新
-  await supabase
+  await db
     .from('delivery_change_logs')
     .update({ changed_by_code: accessCode, changed_by_role: 'warehouse' })
     .eq('delivery_schedule_id', deliveryId)
@@ -272,7 +273,7 @@ async function recordInspection(deliveryId, inspectionDate, accessCode) {
 // ══════════════════════════════════════════════════════════════
 
 async function fetchWarehouseDeliveries() {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('warehouse_delivery_view')
     .select('*')
     .order('scheduled_date', { ascending: true });
@@ -303,7 +304,7 @@ async function fetchChangeLogs(brandCode) {
 
 // 未通知の変更ログを取得（倉庫画面の通知バナー用）
 async function fetchUnnotifiedChanges() {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('delivery_change_logs')
     .select(`
       *,
@@ -319,7 +320,7 @@ async function fetchUnnotifiedChanges() {
 
 // 変更を通知済みにする
 async function markNotified(logIds) {
-  const { error } = await supabase
+  const { error } = await db
     .from('delivery_change_logs')
     .update({ notified: true })
     .in('id', logIds);
@@ -333,7 +334,7 @@ async function markNotified(logIds) {
 // ══════════════════════════════════════════════════════════════
 
 function subscribeToDeliveryChanges(callback) {
-  return supabase
+  return db
     .channel('delivery_changes')
     .on('postgres_changes', {
       event: '*',
@@ -349,7 +350,7 @@ function subscribeToDeliveryChanges(callback) {
 }
 
 function subscribeToChangeLog(callback) {
-  return supabase
+  return db
     .channel('change_log')
     .on('postgres_changes', {
       event: 'INSERT',
