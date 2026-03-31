@@ -37,7 +37,7 @@ async function loginWithCode(code) {
 
 // 発注一覧を取得（ブランドフィルタ付き）
 async function fetchOrders(brandCode) {
-  let query = supabase
+  let query = db
     .from('orders')
     .select('*')
     .order('created_at', { ascending: false });
@@ -53,7 +53,7 @@ async function fetchOrders(brandCode) {
 
 // 発注＋納品予定を結合取得
 async function fetchOrdersWithDeliveries(brandCode) {
-  let query = supabase
+  let query = db
     .from('orders')
     .select(`
       *,
@@ -287,7 +287,7 @@ async function fetchWarehouseDeliveries() {
 // ══════════════════════════════════════════════════════════════
 
 async function fetchChangeLogs(brandCode) {
-  let query = supabase
+  let query = db
     .from('order_change_log_view')
     .select('*')
     .order('created_at', { ascending: false })
