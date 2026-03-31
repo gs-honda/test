@@ -237,7 +237,7 @@ document.getElementById('codeInput').addEventListener('keydown',e=>{if(e.key==='
 function handleLogout(){currentAccess=null;orders=[];changeLogs=[];document.getElementById('app').style.display='none';document.getElementById('loginScreen').style.display='flex';const b=document.getElementById('loginBtn');b.disabled=false;b.textContent='ログイン';document.getElementById('codeInput').value='';document.getElementById('codeInput').focus()}
 
 async function loadBrands(){
-  const{data}=await supabase.from('brands').select('code,name').order('code');
+  const{data}=await db.from('brands').select('code,name').order('code');
   brands=data||[];
   ['brandFilter','logBrandFilter'].forEach(id=>{
     const el=document.getElementById(id);

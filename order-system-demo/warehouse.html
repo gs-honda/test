@@ -234,7 +234,7 @@ document.getElementById('codeInput').addEventListener('keydown',e=>{if(e.key==='
 function handleLogout(){currentAccess=null;deliveries=[];document.getElementById('app').style.display='none';document.getElementById('loginScreen').style.display='flex';const b=document.getElementById('loginBtn');b.disabled=false;b.textContent='ログイン';document.getElementById('codeInput').value='';document.getElementById('codeInput').focus()}
 
 async function loadBrands(){
-  const{data}=await supabase.from('brands').select('code,name').order('code');
+  const{data}=await db.from('brands').select('code,name').order('code');
   const brands=data||[];
   ['brandFilter','historyBrandFilter'].forEach(id=>{
     document.getElementById(id).innerHTML='<option value="">全ブランド</option>'+brands.map(b=>`<option value="${b.code}">${b.code} — ${b.name}</option>`).join('');
