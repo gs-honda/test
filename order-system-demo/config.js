@@ -84,11 +84,20 @@ async function fetchOrdersWithDeliveries(brandCode) {
   return data || [];
 }
 
+// 発注番号を生成（PO-YYxxxxx形式、ランダム5桁で衝突回避）
+function generateOrderId() {
+  const yy = String(new Date().getFullYear()).slice(-2);
+  const rand = String(Math.floor(10000 + Math.random() * 90000));
+  return `PO-${yy}${rand}`;
+}
+
 // 新規発注を作成
 async function createOrder({ sku, product_name, unit_price, quantity, brand_code, desired_date, note }) {
+  const id = generateOrderId();
   const { data, error } = await db
     .from('orders')
     .insert({
+      id,
       sku,
       product_name,
       unit_price: unit_price || null,
