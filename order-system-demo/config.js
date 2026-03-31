@@ -9,8 +9,8 @@
 // ┌──────────────────────────────────────────┐
 // │  ★ この2つを自分のSupabaseプロジェクトに合わせて変更 │
 // └──────────────────────────────────────────┘
-const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const SUPABASE_URL = 'https://nrllslznurnaqrnwnudh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ybGxzbHpudXJuYXFybndudWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5MjIwOTcsImV4cCI6MjA5MDQ5ODA5N30.TkLDPhOowU2be2F7L_8FY3adSQiD2hIR37bh9KDNhNY';
 
 // ── Supabase Client 初期化 ──
 // CDNが window.supabase にライブラリを公開するため、変数名を db にする
