@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Budget Tactics Board</title>
+  <style>
+    :root {
+      --bg: #0b3d2e;
+      --panel: rgba(255,255,255,0.08);
+      --panel-strong: rgba(255,255,255,0.12);
+      --line: rgba(255,255,255,0.22);
+      --text: #f4fff9;
+      --muted: rgba(244,255,249,0.72);
+      --accent: #a7ff83;
+      --accent-2: #ffd166;
+      --danger: #ff7b7b;
+      --shadow: 0 14px 40px rgba(0,0,0,0.28);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "Hiragino Sans", "Yu Gothic", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 32%),
+        linear-gradient(180deg, #11593d 0%, #0a3a2d 100%);
+      min-height: 100vh;
+    }
+
+    .app {
+      width: min(1200px, calc(100% - 24px));
+      margin: 20px auto 40px;
+      display: grid;
+      grid-template-columns: 1.12fr 0.88fr;
+      gap: 18px;
+    }
+
+    .board {
+      position: relative;
+      min-height: 780px;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      background:
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(180deg, #1a7b52 0%, #11573d 100%);
+      background-size: 64px 64px, 64px 64px, auto;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .pitch-line,
+    .pitch-circle,
+    .pitch-box,
+    .pitch-goal,
+    .center-dot {
+      position: absolute;
+      border-color: rgba(255,255,255,0.28);
+    }
+
+    .pitch-line.mid {
+      left: 0;
+      right: 0;
+      top: 50%;
+      border-top: 2px solid rgba(255,255,255,0.28);
+    }
+
+    .pitch-circle {
+      left: 50%;
+      top: 50%;
+      width: 170px;
+      height: 170px;
+      transform: translate(-50%, -50%);
+      border: 2px solid rgba(255,255,255,0.28);
+      border-radius: 50%;
+    }
+
+    .center-dot {
+      left: 50%;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      transform: translate(-50%, -50%);
+      background: rgba(255,255,255,0.7);
+      border-radius: 50%;
+    }
+
+    .pitch-box.top-large,
+    .pitch-box.bottom-large {
+      left: 18%;
+      width: 64%;
+      height: 132px;
+      border: 2px solid rgba(255,255,255,0.28);
+    }
+    .pitch-box.top-small,
+    .pitch-box.bottom-small {
+      left: 32%;
+      width: 36%;
+      height: 56px;
+      border: 2px solid rgba(255,255,255,0.28);
+    }
+    .pitch-box.top-large { top: 0; border-top: 0; }
+    .pitch-box.top-small { top: 0; border-top: 0; }
+    .pitch-box.bottom-large { bottom: 0; border-bottom: 0; }
+    .pitch-box.bottom-small { bottom: 0; border-bottom: 0; }
+
+    .pitch-goal.top,
+    .pitch-goal.bottom {
+      left: 40%;
+      width: 20%;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.28);
+    }
+    .pitch-goal.top { top: 0; border-top: 0; }
+    .pitch-goal.bottom { bottom: 0; border-bottom: 0; }
+
+    .board-header {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      z-index: 2;
+    }
+
+    .board-title {
+      background: rgba(0,0,0,0.18);
+      backdrop-filter: blur(8px);
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      max-width: 72%;
+    }
+
+    .board-title h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0.02em;
+    }
+
+    .board-title p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .score-box {
+      background: rgba(0,0,0,0.24);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 16px;
+      padding: 12px 14px;
+      min-width: 220px;
+      text-align: center;
+    }
+
+    .score-box .label {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      gap: 10px;
+    }
+
+    .score-team {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .score-value {
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .vs {
+      font-size: 12px;
+      color: var(--muted);
+      padding-bottom: 8px;
+    }
+
+    .formation {
+      position: absolute;
+      inset: 110px 30px 28px;
+      z-index: 1;
+    }
+
+    .player {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 128px;
+      max-width: 28vw;
+      text-align: center;
+    }
+
+    .player-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 76px;
+      height: 76px;
+      margin-bottom: 8px;
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 24px;
+      background: radial-gradient(circle at 35% 30%, #d5ffb5, #7ed957 62%, #3d8f2c 100%);
+      color: #0f2e18;
+      border: 4px solid rgba(255,255,255,0.7);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+    }
+
+    .player.over .player-chip {
+      background: radial-gradient(circle at 35% 30%, #ffc2c2, #ff7b7b 62%, #c74242 100%);
+      color: #2f0f0f;
+    }
+
+    .player-name {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .player-value {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .player-value.positive { color: var(--accent); }
+    .player-value.negative { color: #ffd0d0; }
+
+    .p1 { top: 6%; }
+    .p2 { top: 24%; left: 24%; }
+    .p3 { top: 24%; left: 76%; }
+    .p4 { top: 44%; left: 16%; }
+    .p5 { top: 44%; left: 50%; }
+    .p6 { top: 44%; left: 84%; }
+    .p7 { top: 68%; }
+
+    .sidebar {
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      backdrop-filter: blur(10px);
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 18px;
+      line-height: 1.3;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 12px 12px;
+      border-radius: 12px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: rgba(167,255,131,0.6);
+      box-shadow: 0 0 0 3px rgba(167,255,131,0.16);
+    }
+
+    .inline-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .mini {
+      background: var(--panel-strong);
+      border-radius: 14px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .mini .k {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+
+    .mini .v {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button.primary {
+      background: var(--accent);
+      color: #123321;
+    }
+    button.secondary {
+      background: rgba(255,255,255,0.1);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    button.warn {
+      background: rgba(255,123,123,0.16);
+      color: #ffd7d7;
+      border: 1px solid rgba(255,123,123,0.22);
+    }
+
+    .week-card {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 10px;
+    }
+
+    .week-card:last-child { margin-bottom: 0; }
+
+    .week-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .week-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .week-value {
+      font-size: 24px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .week-value.good { color: var(--accent); }
+    .week-value.bad { color: #ffd0d0; }
+
+    .log-list {
+      display: grid;
+      gap: 10px;
+      max-height: 340px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .log-item {
+      display: grid;
+      grid-template-columns: 88px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 72px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+    }
+
+    .badge.good {
+      background: rgba(167,255,131,0.16);
+      color: #d7ffcb;
+    }
+
+    .badge.bad {
+      background: rgba(255,123,123,0.16);
+      color: #ffd2d2;
+    }
+
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+      .board {
+        min-height: 700px;
+      }
+      .board-title {
+        max-width: 100%;
+      }
+      .score-box {
+        min-width: 0;
+      }
+      .board-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .board { min-height: 620px; }
+      .formation { inset: 150px 10px 18px; }
+      .player { width: 90px; }
+      .player-chip { width: 56px; height: 56px; font-size: 18px; }
+      .player-value { font-size: 15px; }
+      .grid-2, .inline-stats { grid-template-columns: 1fr; }
+      .log-item { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="board">
+      <div class="pitch-line mid"></div>
+      <div class="pitch-circle"></div>
+      <div class="center-dot"></div>
+      <div class="pitch-box top-large"></div>
+      <div class="pitch-box top-small"></div>
+      <div class="pitch-box bottom-large"></div>
+      <div class="pitch-box bottom-small"></div>
+      <div class="pitch-goal top"></div>
+      <div class="pitch-goal bottom"></div>
+
+      <div class="board-header">
+        <div class="board-title">
+          <h1>Budget Tactics Board</h1>
+          <p>1週間を1試合として見る、7日編成の戦術ボード。日々の支出を並べて、週ごとの余りを貯金へ回すためのダッシュボードです。</p>
+        </div>
+        <div class="score-box">
+          <div class="label">WEEKLY MATCH SCORE</div>
+          <div class="score-row">
+            <div>
+              <div class="score-team">BUDGET</div>
+              <div class="score-value" id="budgetScore">0</div>
+            </div>
+            <div class="vs">VS</div>
+            <div>
+              <div class="score-team">SPEND</div>
+              <div class="score-value" id="spendScore">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="formation" id="formation"></div>
+    </section>
+
+    <aside class="sidebar">
+      <section class="card">
+        <h2>今日の記録</h2>
+        <div class="grid-2">
+          <div>
+            <label for="dateInput">日付</label>
+            <input id="dateInput" type="date" />
+          </div>
+          <div>
+            <label for="spendInput">使った金額（円）</label>
+            <input id="spendInput" type="number" min="0" step="1" placeholder="例: 1850" />
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary" id="saveBtn">この日の支出を記録</button>
+          <button class="secondary" id="fillTodayBtn">今日の日付を入れる</button>
+        </div>
+        <div class="inline-stats">
+          <div class="mini">
+            <div class="k">1日予算</div>
+            <div class="v" id="dailyBudgetView">¥2,400</div>
+          </div>
+          <div class="mini">
+            <div class="k">今週の余り</div>
+            <div class="v" id="weeklyRemainView">¥0</div>
+          </div>
+          <div class="mini">
+            <div class="k">今週の勝ち日数</div>
+            <div class="v" id="weeklyWinDaysView">0</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>戦術設定</h2>
+        <div class="grid-2">
+          <div>
+            <label for="monthlyBudgetInput">月の生活費予算（円）</label>
+            <input id="monthlyBudgetInput" type="number" min="0" step="100" />
+          </div>
+          <div>
+            <label for="daysInput">月の日数</label>
+            <input id="daysInput" type="number" min="1" max="31" step="1" />
+          </div>
+        </div>
+        <p class="muted">1日予算 = 月予算 ÷ 日数。週ごとの余りを見て、あとで手動で別口座へ移す前提です。</p>
+        <div class="actions">
+          <button class="secondary" id="saveSettingsBtn">設定を保存</button>
+          <button class="warn" id="resetBtn">全データをリセット</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>週ごとの余り</h2>
+        <div id="weeksContainer"></div>
+      </section>
+
+      <section class="card">
+        <h2>試合ログ</h2>
+        <div class="log-list" id="logsContainer"></div>
+      </section>
+    </aside>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'budget-tactics-board-v1';
+
+    const defaultState = {
+      monthlyBudget: 72000,
+      monthDays: 30,
+      logs: []
+    };
+
+    const state = loadState();
+
+    const els = {
+      formation: document.getElementById('formation'),
+      budgetScore: document.getElementById('budgetScore'),
+      spendScore: document.getElementById('spendScore'),
+      dateInput: document.getElementById('dateInput'),
+      spendInput: document.getElementById('spendInput'),
+      fillTodayBtn: document.getElementById('fillTodayBtn'),
+      saveBtn: document.getElementById('saveBtn'),
+      monthlyBudgetInput: document.getElementById('monthlyBudgetInput'),
+      daysInput: document.getElementById('daysInput'),
+      saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      dailyBudgetView: document.getElementById('dailyBudgetView'),
+      weeklyRemainView: document.getElementById('weeklyRemainView'),
+      weeklyWinDaysView: document.getElementById('weeklyWinDaysView'),
+      weeksContainer: document.getElementById('weeksContainer'),
+      logsContainer: document.getElementById('logsContainer')
+    };
+
+    init();
+
+    function init() {
+      els.monthlyBudgetInput.value = state.monthlyBudget;
+      els.daysInput.value = state.monthDays;
+      els.dateInput.value = todayLocal();
+      attachEvents();
+      render();
+    }
+
+    function attachEvents() {
+      els.fillTodayBtn.addEventListener('click', () => {
+        els.dateInput.value = todayLocal();
+      });
+
+      els.saveBtn.addEventListener('click', () => {
+        const date = els.dateInput.value;
+        const spend = Number(els.spendInput.value);
+        if (!date) {
+          alert('日付を入れてください。');
+          return;
+        }
+        if (!Number.isFinite(spend) || spend < 0) {
+          alert('使った金額を0円以上で入れてください。');
+          return;
+        }
+
+        const existingIndex = state.logs.findIndex(log => log.date === date);
+        const record = { date, spend };
+        if (existingIndex >= 0) {
+          state.logs[existingIndex] = record;
+        } else {
+          state.logs.push(record);
+        }
+
+        state.logs.sort((a, b) => a.date.localeCompare(b.date));
+        saveState();
+        els.spendInput.value = '';
+        render();
+      });
+
+      els.saveSettingsBtn.addEventListener('click', () => {
+        const monthlyBudget = Number(els.monthlyBudgetInput.value);
+        const monthDays = Number(els.daysInput.value);
+        if (!Number.isFinite(monthlyBudget) || monthlyBudget <= 0) {
+          alert('月予算を入れてください。');
+          return;
+        }
+        if (!Number.isFinite(monthDays) || monthDays < 1 || monthDays > 31) {
+          alert('月の日数は1〜31で入れてください。');
+          return;
+        }
+        state.monthlyBudget = Math.round(monthlyBudget);
+        state.monthDays = Math.round(monthDays);
+        saveState();
+        render();
+      });
+
+      els.resetBtn.addEventListener('click', () => {
+        const ok = window.confirm('設定と記録をすべて削除しますか？');
+        if (!ok) return;
+        localStorage.removeItem(STORAGE_KEY);
+        Object.assign(state, JSON.parse(JSON.stringify(defaultState)));
+        els.monthlyBudgetInput.value = state.monthlyBudget;
+        els.daysInput.value = state.monthDays;
+        els.dateInput.value = todayLocal();
+        els.spendInput.value = '';
+        render();
+      });
+    }
+
+    function render() {
+      const dailyBudget = getDailyBudget();
+      els.dailyBudgetView.textContent = yen(dailyBudget);
+
+      const currentWeekInfo = getCurrentWeekInfo();
+      els.weeklyRemainView.textContent = yen(currentWeekInfo.remaining);
+      els.weeklyWinDaysView.textContent = String(currentWeekInfo.winDays);
+
+      renderFormation(dailyBudget);
+      renderScore(currentWeekInfo, dailyBudget);
+      renderWeeks(dailyBudget);
+      renderLogs(dailyBudget);
+    }
+
+    function renderFormation(dailyBudget) {
+      const currentMonthLogs = getCurrentMonthLogs();
+      const slots = buildMonthSlots(currentMonthLogs);
+      els.formation.innerHTML = '';
+
+      slots.forEach((slot, index) => {
+        const diff = dailyBudget - slot.spend;
+        const isOver = diff < 0;
+        const div = document.createElement('div');
+        div.className = `player p${index + 1} ${isOver ? 'over' : ''}`;
+        div.innerHTML = `
+          <div class="player-chip">${index + 1}</div>
+          <div class="player-name">${slot.label}</div>
+          <div class="player-value ${isOver ? 'negative' : 'positive'}">${signedYen(diff)}</div>
+        `;
+        els.formation.appendChild(div);
+      });
+    }
+
+    function renderScore(weekInfo, dailyBudget) {
+      const budgetTotal = weekInfo.days.length * dailyBudget;
+      const spendTotal = weekInfo.days.reduce((sum, d) => sum + d.spend, 0);
+      els.budgetScore.textContent = Math.round(budgetTotal / 100).toString();
+      els.spendScore.textContent = Math.round(spendTotal / 100).toString();
+    }
+
+    function renderWeeks(dailyBudget) {
+      const weeks = getWeekGroups();
+      if (!weeks.length) {
+        els.weeksContainer.innerHTML = `<p class="muted">まだ記録がありません。日々の支出を入れると、週ごとの余りがここに表示されます。</p>`;
+        return;
+      }
+
+      els.weeksContainer.innerHTML = weeks.map(week => {
+        const daysCount = week.entries.length;
+        const budget = dailyBudget * daysCount;
+        const spent = week.entries.reduce((sum, x) => sum + x.spend, 0);
+        const remain = budget - spent;
+        const wins = week.entries.filter(x => x.spend <= dailyBudget).length;
+        return `
+          <div class="week-card">
+            <div>
+              <div class="week-title">${escapeHtml(week.label)}</div>
+              <div class="week-sub">${daysCount}日記録 / 勝ち ${wins}日 / 支出 ${yen(spent)}</div>
+            </div>
+            <div class="week-value ${remain >= 0 ? 'good' : 'bad'}">${signedYen(remain)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderLogs(dailyBudget) {
+      const logs = [...state.logs].sort((a, b) => b.date.localeCompare(a.date));
+      if (!logs.length) {
+        els.logsContainer.innerHTML = `<p class="muted">まだログがありません。</p>`;
+        return;
+      }
+
+      els.logsContainer.innerHTML = logs.map(log => {
+        const diff = dailyBudget - log.spend;
+        const good = diff >= 0;
+        return `
+          <div class="log-item">
+            <div><span class="badge ${good ? 'good' : 'bad'}">${good ? 'WIN' : 'OVER'}</span></div>
+            <div>
+              <div>${escapeHtml(log.date)}</div>
+              <div class="small">支出 ${yen(log.spend)} / 基準 ${yen(dailyBudget)}</div>
+            </div>
+            <div class="week-value ${good ? 'good' : 'bad'}">${signedYen(diff)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getCurrentMonthLogs() {
+      const month = todayLocal().slice(0, 7);
+      return state.logs.filter(log => log.date.startsWith(month));
+    }
+
+    function buildMonthSlots(currentMonthLogs) {
+      const logs = [...currentMonthLogs].sort((a, b) => a.date.localeCompare(b.date)).slice(-7);
+      const slots = logs.map((log, i) => ({
+        label: formatShortDate(log.date),
+        spend: log.spend
+      }));
+
+      while (slots.length < 7) {
+        slots.unshift({
+          label: 'empty',
+          spend: 0
+        });
+      }
+
+      return slots;
+    }
+
+    function getWeekGroups() {
+      const groups = new Map();
+      const sorted = [...state.logs].sort((a, b) => a.date.localeCompare(b.date));
+      for (const log of sorted) {
+        const key = getWeekKey(log.date);
+        if (!groups.has(key)) {
+          groups.set(key, []);
+        }
+        groups.get(key).push(log);
+      }
+
+      return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).reverse().map(([key, entries]) => ({
+        key,
+        label: weekLabelFromKey(key),
+        entries
+      }));
+    }
+
+    function getCurrentWeekInfo() {
+      const today = new Date();
+      const start = startOfWeek(today);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      const key = getWeekKey(todayLocal());
+      const weekEntries = getWeekGroups().find(w => w.key === key)?.entries || [];
+      const dailyBudget = getDailyBudget();
+      const budgetTotal = dailyBudget * weekEntries.length;
+      const spentTotal = weekEntries.reduce((sum, x) => sum + x.spend, 0);
+      const remaining = budgetTotal - spentTotal;
+      const winDays = weekEntries.filter(x => x.spend <= dailyBudget).length;
+      return {
+        start,
+        end,
+        days: weekEntries,
+        remaining,
+        winDays
+      };
+    }
+
+    function getDailyBudget() {
+      return Math.round(state.monthlyBudget / state.monthDays);
+    }
+
+    function getWeekKey(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const start = startOfWeek(d);
+      return toDateString(start);
+    }
+
+    function weekLabelFromKey(key) {
+      const start = new Date(key + 'T00:00:00');
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      return `${start.getFullYear()}/${start.getMonth() + 1}/${start.getDate()} - ${end.getMonth() + 1}/${end.getDate()}`;
+    }
+
+    function startOfWeek(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + diff);
+      return d;
+    }
+
+    function todayLocal() {
+      const now = new Date();
+      return toDateString(now);
+    }
+
+    function toDateString(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatShortDate(dateStr) {
+      const [, m, d] = dateStr.split('-');
+      return `${Number(m)}/${Number(d)}`;
+    }
+
+    function yen(n) {
+      return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 }).format(n);
+    }
+
+    function signedYen(n) {
+      return `${n >= 0 ? '+' : '-'}${yen(Math.abs(n))}`;
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return JSON.parse(JSON.stringify(defaultState));
+        const parsed = JSON.parse(raw);
+        return {
+          monthlyBudget: Number(parsed.monthlyBudget) || defaultState.monthlyBudget,
+          monthDays: Number(parsed.monthDays) || defaultState.monthDays,
+          logs: Array.isArray(parsed.logs) ? parsed.logs.filter(x => x && x.date && Number.isFinite(Number(x.spend))).map(x => ({ date: x.date, spend: Number(x.spend) })) : []
+        };
+      } catch {
+        return JSON.parse(JSON.stringify(defaultState));
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+  </script>
+</body>
+</html>
