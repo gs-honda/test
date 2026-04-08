@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1件の価値 — はじめてのベイズ更新</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=Klee+One:wght@400;600&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #faf8f4;
+  --surface: #ffffff;
+  --surface2: #f2efe8;
+  --border: #e4dfd4;
+  --text: #2c2a25;
+  --text-dim: #8a857a;
+  --text-mid: #5c5850;
+  --accent: #d16b2a;
+  --accent-light: #fdf0e6;
+  --blue: #2a7ab5;
+  --blue-light: #e6f2fa;
+  --green: #3a8a5c;
+  --green-light: #e8f5ee;
+  --red: #c44040;
+  --red-light: #fce8e8;
+  --round: 'Zen Maru Gothic', sans-serif;
+  --hand: 'Klee One', cursive;
+  --mono: 'Source Code Pro', monospace;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --shadow-lg: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--round);
+  font-weight: 400;
+  line-height: 2;
+  font-size: 16px;
+}
+
+/* ===== Hero ===== */
+.hero {
+  min-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -15%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(209,107,42,0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -10%;
+  left: -10%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(42,122,181,0.06) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero-badge {
+  display: inline-block;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.3rem 1rem;
+  border-radius: 20px;
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.2s forwards;
+}
+
+.hero h1 {
+  font-family: var(--round);
+  font-weight: 900;
+  font-size: clamp(1.6rem, 5vw, 2.6rem);
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.35s forwards;
+}
+
+.hero h1 em {
+  font-style: normal;
+  color: var(--accent);
+  position: relative;
+}
+
+.hero h1 em::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: -2px;
+  right: -2px;
+  height: 8px;
+  background: rgba(209,107,42,0.15);
+  border-radius: 4px;
+  z-index: -1;
+}
+
+/* ===== Impact Number ===== */
+.impact-block {
+  margin: 0.5rem 0 2rem;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.55s forwards;
+}
+
+.impact-number-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.impact-prefix {
+  font-family: var(--round);
+  font-weight: 700;
+  font-size: clamp(1.2rem, 3vw, 2rem);
+  color: var(--accent);
+}
+
+.impact-number {
+  font-family: var(--round);
+  font-weight: 900;
+  font-size: clamp(4rem, 14vw, 9rem);
+  line-height: 1;
+  color: var(--accent);
+  letter-spacing: -0.03em;
+}
+
+.impact-unit {
+  font-family: var(--round);
+  font-weight: 900;
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  color: var(--accent);
+}
+
+.impact-caption {
+  font-size: 1rem;
+  color: var(--text-mid);
+  max-width: 400px;
+  margin: 0.5rem auto 0;
+  line-height: 1.8;
+}
+
+.impact-source {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin-top: 0.5rem;
+}
+
+.hero-sub {
+  font-size: 1rem;
+  color: var(--text-mid);
+  max-width: 500px;
+  line-height: 2;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.7s forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.scroll-arrow {
+  margin-top: 2rem;
+  font-size: 1.5rem;
+  color: var(--accent);
+  opacity: 0;
+  animation: fadeUp 0.6s 0.9s forwards, bounce 2s 1.5s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+
+/* ===== Sections ===== */
+.section {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.section h2 {
+  font-family: var(--round);
+  font-weight: 900;
+  font-size: 1.5rem;
+  line-height: 1.5;
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.section p {
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+
+.callout {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  box-shadow: var(--shadow);
+}
+
+.callout.orange { border-color: var(--accent); background: var(--accent-light); }
+.callout.blue { border-color: var(--blue); background: var(--blue-light); }
+.callout.green { border-color: var(--green); background: var(--green-light); }
+
+.callout-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+}
+
+.analogy {
+  font-family: var(--hand);
+  font-size: 1.05rem;
+  color: var(--text-mid);
+  line-height: 2;
+  margin: 1.2rem 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--border);
+}
+
+.formula-box {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  background: var(--surface2);
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  margin: 1rem 0;
+  text-align: center;
+  color: var(--text-mid);
+}
+
+.small-note {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+/* ===== Weight Visual ===== */
+.weight-compare {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--surface);
+  border-radius: 20px;
+  box-shadow: var(--shadow-lg);
+}
+
+.weight-item {
+  text-align: center;
+}
+
+.weight-circle {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 160px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.5rem;
+  transition: all 0.5s ease-out;
+}
+
+.weight-circle.big {
+  background: linear-gradient(135deg, var(--accent), #e8883a);
+  color: #fff;
+  box-shadow: 0 8px 30px rgba(209,107,42,0.3);
+}
+
+.weight-circle.small {
+  background: var(--surface2);
+  color: var(--text-dim);
+  border: 2px solid var(--border);
+}
+
+.weight-circle .num {
+  font-family: var(--round);
+  font-weight: 900;
+  font-size: clamp(1.2rem, 4vw, 2rem);
+  line-height: 1.2;
+}
+
+.weight-circle .unit {
+  font-size: 0.7rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.weight-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.weight-sublabel {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.weight-vs {
+  font-family: var(--round);
+  font-weight: 900;
+  font-size: 1.2rem;
+  color: var(--text-dim);
+}
+
+@media (max-width: 500px) {
+  .weight-compare { grid-template-columns: 1fr; gap: 1rem; padding: 1rem; }
+  .weight-vs { transform: rotate(90deg); }
+  .weight-circle { max-width: 120px; }
+}
+
+/* ===== Interactive Panels ===== */
+.sim-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 1.8rem;
+  margin: 2rem 0;
+  box-shadow: var(--shadow-lg);
+}
+
+.sim-card h3 {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sim-card h3 .emoji { font-size: 1.3rem; }
+
+.sim-desc {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin-bottom: 1rem;
+  line-height: 1.8;
+}
+
+.slider-group {
+  margin: 0.8rem 0;
+}
+
+.slider-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  margin-bottom: 0.3rem;
+}
+
+.slider-label .val {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface2);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(209,107,42,0.3);
+  transition: transform 0.15s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+canvas {
+  width: 100%;
+  height: 240px;
+  display: block;
+  margin: 1rem 0;
+  border-radius: 12px;
+}
+
+.legend-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.insight-box {
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  margin-top: 0.8rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--text-mid);
+  min-height: 1.8em;
+}
+
+button.action-btn {
+  font-family: var(--round);
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(209,107,42,0.25);
+  transition: all 0.15s;
+}
+
+button.action-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(209,107,42,0.3); }
+button.action-btn:active { transform: translateY(0); }
+
+.btn-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.8rem 0; }
+
+button.action-btn.outline {
+  background: transparent;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  box-shadow: none;
+}
+
+/* ===== Belief bar ===== */
+.belief-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 1rem 0;
+}
+
+.belief-bar-track {
+  flex: 1;
+  height: 28px;
+  background: var(--surface2);
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.belief-bar-fill {
+  height: 100%;
+  border-radius: 14px;
+  transition: width 0.4s ease-out, background 0.4s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  min-width: 40px;
+}
+
+.belief-label {
+  font-size: 0.82rem;
+  font-weight: 500;
+  min-width: 80px;
+}
+
+/* ===== Comparison ===== */
+.compare-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.compare-card {
+  border-radius: 16px;
+  padding: 1.2rem;
+  text-align: center;
+}
+
+.compare-card.wait {
+  background: var(--red-light);
+  border: 2px solid rgba(196,64,64,0.2);
+}
+
+.compare-card.act {
+  background: var(--green-light);
+  border: 2px solid rgba(58,138,92,0.2);
+}
+
+.compare-card .big {
+  font-family: var(--round);
+  font-weight: 900;
+  font-size: 2rem;
+  line-height: 1.3;
+}
+
+.compare-card .label {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 500px) {
+  .compare-cards { grid-template-columns: 1fr; }
+}
+
+/* ===== Divider ===== */
+.divider {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.divider-line {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
+/* ===== Footer ===== */
+.footer {
+  text-align: center;
+  padding: 2rem 1.5rem 3rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+/* ===== History log ===== */
+.history-log {
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 0.82rem;
+  margin: 0.5rem 0;
+}
+
+.history-log .entry {
+  padding: 0.25rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--surface2);
+}
+
+.history-log .entry .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.history-log .entry .shift {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+/* ===== Ratio slider special ===== */
+.ratio-display {
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.ratio-num {
+  font-family: var(--round);
+  font-weight: 900;
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  color: var(--accent);
+  line-height: 1.1;
+  transition: all 0.3s;
+}
+
+.ratio-label {
+  font-size: 0.9rem;
+  color: var(--text-mid);
+}
+</style>
+</head>
+<body>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <div class="hero-badge">やさしいデータの話</div>
+  <h1>新しいことを始めたときの<em>最初の1件</em>は、<br>どのくらい価値があるのか？</h1>
+
+  <div class="impact-block">
+    <div class="impact-number-row">
+      <span class="impact-prefix">約</span>
+      <span class="impact-number" id="hero-counter">0</span>
+      <span class="impact-unit">倍</span>
+    </div>
+    <div class="impact-caption">
+      1件目のデータが持つ情報価値は、<br>
+      100件目のデータの<strong>約1,200倍</strong>です。
+    </div>
+    <div class="impact-source">
+      ※ ベイズ事後分散の減少量で算出（下で詳しく説明します）
+    </div>
+  </div>
+
+  <p class="hero-sub">
+    「まだデータが足りないから判断できない」——<br>
+    この常識は、本当に正しいのでしょうか？<br>
+    一緒に体験しながら考えてみましょう。
+  </p>
+  <div class="scroll-arrow">↓</div>
+</div>
+
+<!-- ===== 1. 日常の直感 ===== -->
+<div class="section">
+  <h2><span class="step-num">1</span>まず、日常の感覚から</h2>
+  <p>
+    あなたが新しい街に引っ越してきたとします。
+    近所にラーメン屋があるけれど、美味しいかどうかまったくわかりません。
+  </p>
+  <div class="analogy">
+    初めて行ってみた → すごく美味しかった！<br>
+    → あなたの「このお店は美味しい」という<strong>確信</strong>は、大きく動きますよね。
+  </div>
+  <p>
+    では、もう50回通った常連だったらどうでしょう？
+    51回目に美味しくても、「まあ、知ってた」くらいの感覚です。
+    あなたの確信はほとんど動きません。
+  </p>
+  <div class="callout orange">
+    <div class="callout-title">これが今日の話のすべてです</div>
+    <strong>「知らない状態」で得る1件の情報は、「よく知っている状態」で得る1件より、
+    はるかに大きく自分の判断を動かす。</strong><br>
+    この直感は数学的にも正しく、「ベイズ更新」という考え方で説明できます。
+  </div>
+</div>
+
+<div class="divider"><hr class="divider-line"></div>
+
+<!-- ===== 2. 1200倍の根拠 ===== -->
+<div class="section">
+  <h2><span class="step-num">2</span>「1,200倍」って、どこから来るの？</h2>
+  <p>
+    冒頭の「約1,200倍」は、こんな考え方から出てきます。
+  </p>
+  <p>
+    何かの成功率がまったくわからない状態から始めて、
+    1件ずつデータを集めていくとします。
+    <strong>n件目の1件を加えたとき、「予想のブレ幅」がどのくらい縮まるか</strong>を測ると——
+  </p>
+
+  <!-- Weight visual -->
+  <div class="weight-compare">
+    <div class="weight-item">
+      <div class="weight-circle big">
+        <span class="num">1件目</span>
+        <span class="unit">の学び</span>
+      </div>
+      <div class="weight-label">ブレ幅を大きく縮める</div>
+      <div class="weight-sublabel">まっさらな状態 → 大きな前進</div>
+    </div>
+    <div class="weight-vs">vs</div>
+    <div class="weight-item">
+      <div class="weight-circle small">
+        <span class="num">100件目</span>
+        <span class="unit">の学び</span>
+      </div>
+      <div class="weight-label">ブレ幅をわずかに縮める</div>
+      <div class="weight-sublabel">すでに知っている → ほぼ変わらない</div>
+    </div>
+  </div>
+
+  <p>
+    1件目がブレ幅を縮める量と、100件目が縮める量を比べると、
+    その差は実に<strong>約1,200倍</strong>。
+    私たちの直感をはるかに超えた差が、数学的に存在しています。
+  </p>
+
+  <div class="callout blue">
+    <div class="callout-title">シャノンの情報理論</div>
+    情報理論の祖クロード・シャノンは「情報の量」を数学的に定義しました。
+    カギとなる考え方は——<br>
+    <strong>「起こりにくいことが起きたときほど、得られる情報は大きい」</strong><br><br>
+    まったくわからない状態では、どんな結果でも大きな「驚き」（＝情報量）になります。
+    よく知っている状態では、何を見ても「知ってた」なので、情報量は小さい。<br>
+    <span class="small-note">
+      数式：I(x) = −log₂(p)　… 確率pの事象から得られる情報量（ビット）
+    </span>
+  </div>
+
+  <!-- Interactive: n件目の情報価値 -->
+  <div class="sim-card">
+    <h3><span class="emoji">🔍</span> n件目の情報価値を調べてみよう</h3>
+    <p class="sim-desc">
+      スライダーを動かして、「何件目のデータが1件目に比べてどのくらいの価値か」を確認してみてください。
+    </p>
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>何件目と比較する？</span>
+        <span class="val" id="ratio-n-val">100件目</span>
+      </div>
+      <input type="range" id="ratio-slider" min="2" max="500" value="100">
+    </div>
+    <div class="ratio-display">
+      <div class="ratio-num" id="ratio-result">1,179倍</div>
+      <div class="ratio-label">1件目は <span id="ratio-n-label">100</span> 件目の約 <span id="ratio-x-label">1,179</span> 倍の情報価値</div>
+    </div>
+    <div class="insight-box" id="ratio-insight">
+      1件目を1万円札だとすると、100件目は約8円の価値です。
+    </div>
+  </div>
+</div>
+
+<div class="divider"><hr class="divider-line"></div>
+
+<!-- ===== 3. ベイズ更新とは ===== -->
+<div class="section">
+  <h2><span class="step-num">3</span>ベイズ更新ってなに？</h2>
+  <p>
+    ベイズ更新とは、ひとことで言えば<strong>「新しい情報を得たとき、自分の考えをどのくらい修正するか」のルール</strong>です。
+  </p>
+  <p>
+    3つのステップだけです：
+  </p>
+
+  <div class="callout blue">
+    <div class="callout-title">ベイズ更新の3ステップ</div>
+    <strong>① いまの予想</strong>（事前の信念）<br>
+    「たぶん美味しいかな？ 五分五分かな？」<br><br>
+    <strong>② 新しいデータを観察</strong><br>
+    「実際に食べてみたら美味しかった！」<br><br>
+    <strong>③ 予想を修正する</strong>（事後の信念）<br>
+    「美味しいお店である可能性がかなり高まった！」
+  </div>
+
+  <p>
+    ポイントは、<strong>①の段階でどのくらい「わかっていない」かによって、③でどのくらい動くかが決まる</strong>ということです。
+  </p>
+
+  <div class="analogy">
+    知識ゼロの状態 → 1件のデータで考えが大きく動く<br>
+    知識豊富な状態 → 1件のデータではほとんど動かない
+  </div>
+
+  <p class="small-note">
+    ※ 数式で書くとこうなります（読み飛ばしてOKです）：<br>
+  </p>
+  <div class="formula-box">
+    事後の信念 ＝ データとの整合性 × いまの信念 ÷ 全体の整合性
+  </div>
+</div>
+
+<div class="divider"><hr class="divider-line"></div>
+
+<!-- ===== 4. 体験: ラーメン屋 ===== -->
+<div class="section">
+  <h2><span class="step-num">4</span>体験してみよう</h2>
+  <p>
+    実際にベイズ更新を体験してみましょう。<br>
+    あなたはラーメン屋の「当たり率」をまだ知りません。
+    「美味しい」か「普通」のどちらかがランダムに出ます。
+    1回ごとに、あなたの確信がどう変わるか見てみてください。
+  </p>
+
+  <div class="sim-card">
+    <h3><span class="emoji">🍜</span> ラーメン屋シミュレーション</h3>
+    <p class="sim-desc">
+      このお店の「当たり率」は隠されています。ボタンを押して1回ずつ食べに行ってみましょう。
+      あなたの「このお店は美味しい確率」の予想がどう変わるか観察してください。
+    </p>
+
+    <div class="belief-bar-container">
+      <span class="belief-label">美味しい率</span>
+      <div class="belief-bar-track">
+        <div class="belief-bar-fill" id="ramen-bar" style="width: 50%; background: var(--blue);">50%</div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="action-btn" id="ramen-go">🥢 食べに行く！</button>
+      <button class="action-btn outline" id="ramen-reset">リセット</button>
+    </div>
+
+    <div class="history-log" id="ramen-log"></div>
+    <div class="insight-box" id="ramen-insight">まだ行ったことがありません。最初の1件が一番大きく予想を動かしますよ！</div>
+  </div>
+</div>
+
+<div class="divider"><hr class="divider-line"></div>
+
+<!-- ===== 5. 逓減カーブ ===== -->
+<div class="section">
+  <h2><span class="step-num">5</span>学びの急カーブ</h2>
+  <p>
+    ラーメン屋シミュレーションで体感してもらえたでしょうか。
+    最初の数回は予想がぐっと動きますが、回数を重ねるにつれて
+    1回あたりの動きはどんどん小さくなります。
+  </p>
+  <p>
+    これをグラフにすると、驚くほど急な右肩下がりのカーブが現れます。
+  </p>
+
+  <div class="sim-card">
+    <h3><span class="emoji">📉</span> 1件あたりの学びの大きさ</h3>
+    <p class="sim-desc">
+      何件目のデータが、どのくらい予想を動かすか。
+      オレンジが「その1件の学びの大きさ」、青が「これまでの累積の確信度」です。
+    </p>
+    <button class="action-btn" id="marginal-btn">グラフを表示</button>
+    <canvas id="marginal-chart"></canvas>
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background: var(--accent);"></div>1件あたりの学び</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--blue);"></div>累積の確信度</div>
+    </div>
+    <div class="insight-box" id="marginal-insight"></div>
+  </div>
+</div>
+
+<div class="divider"><hr class="divider-line"></div>
+
+<!-- ===== 6. 既存データと1件の重み ===== -->
+<div class="section">
+  <h2><span class="step-num">6</span>既存データ量で変わる「1件の重み」</h2>
+  <p>
+    もっと直接的に見てみましょう。
+    すでに持っているデータの件数を変えて、
+    「あと1件成功が加わったら、予想がどれだけ動くか」を比べてみてください。
+  </p>
+
+  <div class="sim-card">
+    <h3><span class="emoji">⚖️</span> 1件の重みくらべ</h3>
+    <p class="sim-desc">
+      スライダーで「すでにあるデータの件数」を変えてください。
+      グラフは「成功率の予想がどんな形をしているか」を示しています。
+      尖っているほど「確信が強い」、平らなほど「よくわからない」状態です。
+    </p>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>すでにあるデータ</span>
+        <span class="val" id="bayes-val">0件</span>
+      </div>
+      <input type="range" id="bayes-slider" min="0" max="200" value="0">
+    </div>
+
+    <canvas id="bayes-chart"></canvas>
+
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background: var(--accent);"></div>いまの予想</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--blue);"></div>成功+1件後の予想</div>
+    </div>
+
+    <div class="insight-box" id="bayes-insight"></div>
+  </div>
+</div>
+
+<div class="divider"><hr class="divider-line"></div>
+
+<!-- ===== 7. ビジネスでの意味 ===== -->
+<div class="section">
+  <h2><span class="step-num">7</span>ビジネスでこれが意味すること</h2>
+  <p>
+    統計の世界には「統計的に有意な差がある」と言い切るための方法（統計的検定）があります。
+    これはとても強力な道具ですが、一つ大きな前提があります。
+    <strong>十分な量のデータが必要</strong>ということです。
+  </p>
+  <p>
+    たとえば「購入率が2%から3%に上がったかどうか」を統計的に確認するには、
+    各パターンで約4,000件以上のデータが必要です。
+    月100件しかない場合、<strong>3年以上待つ</strong>ことになります。
+  </p>
+
+  <div class="compare-cards">
+    <div class="compare-card wait">
+      <div class="big" style="color: var(--red);">3年+</div>
+      <div class="label">統計的検定で<br>「有意差あり」を待つ場合</div>
+    </div>
+    <div class="compare-card act">
+      <div class="big" style="color: var(--green);">1件から</div>
+      <div class="label">1件ずつ学んで<br>仮説を磨く場合</div>
+    </div>
+  </div>
+
+  <p>
+    「まだ有意差が出ていないから判断できない」は、
+    <strong>データが使えないのではなく、検定という道具がそのデータを活かせないだけ</strong>です。
+    ベイズ的に考えれば、1件目から学びは始まっています。
+  </p>
+
+  <div class="sim-card">
+    <h3><span class="emoji">📊</span> 検定が必要なサンプル数</h3>
+    <p class="sim-desc">
+      改善幅（効果の大きさ）を変えてみてください。
+      小さな改善ほど膨大なデータが必要ですが、
+      ベイズ的な学びは最初の数件で急速に進みます。
+    </p>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>もとの購入率</span>
+        <span class="val" id="power-base-val">2%</span>
+      </div>
+      <input type="range" id="power-base" min="1" max="20" value="2">
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>改善後の購入率</span>
+        <span class="val" id="power-new-val">3%</span>
+      </div>
+      <input type="range" id="power-new" min="2" max="30" value="3">
+    </div>
+
+    <canvas id="power-chart"></canvas>
+
+    <div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background: var(--accent);"></div>学びの蓄積（ベイズ）</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--red);"></div>検定に必要なサンプル数</div>
+    </div>
+
+    <div class="insight-box" id="power-insight"></div>
+  </div>
+</div>
+
+<div class="divider"><hr class="divider-line"></div>
+
+<!-- ===== 8. まとめ ===== -->
+<div class="section">
+  <h2><span class="step-num">8</span>まとめ：新しいことを始めるときに</h2>
+
+  <div class="callout orange">
+    <div class="callout-title">覚えておきたい3つのこと</div>
+    <p>
+      <strong>① 最初の1件は、100件目の約1,200倍の価値がある</strong><br>
+      「まったくわからない」状態で得る情報は、確信が強い状態で得る情報より
+      桁違いに大きく判断を動かします。これは直感ではなく、情報理論の数学的帰結です。
+    </p>
+    <p>
+      <strong>② 「有意差が出るまで待つ」は万能ではない</strong><br>
+      統計的検定は強力な道具ですが、立ち上げ期の少ないデータには向きません。
+      データが「使えない」のではなく、道具の使い方が合っていないだけです。
+    </p>
+    <p>
+      <strong>③ 仮説→試す→学ぶ→修正するサイクルを速く回す</strong><br>
+      1件ずつ学んで仮説を磨く。このサイクルの速さこそが、
+      新しいことに挑戦するときの最大の武器です。
+    </p>
+  </div>
+
+  <div class="analogy">
+    「n = 1はエビデンスがない」のではない。<br>
+    最も情報密度の高い1件なのです。
+  </div>
+</div>
+
+<div class="footer">
+  1件の価値 — はじめてのベイズ更新<br>
+  Shannon Entropy × Bayesian Updating × Decision Making
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script>
+// ===== Utility =====
+function getCtx(id) {
+  const c = document.getElementById(id);
+  const dpr = window.devicePixelRatio || 1;
+  const rect = c.getBoundingClientRect();
+  c.width = rect.width * dpr;
+  c.height = rect.height * dpr;
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { ctx, w: rect.width, h: rect.height };
+}
+
+const C = {
+  accent: '#d16b2a',
+  blue: '#2a7ab5',
+  green: '#3a8a5c',
+  red: '#c44040',
+  grid: '#e4dfd4',
+  text: '#8a857a',
+  bg: '#ffffff',
+  bgAlt: '#f2efe8',
+};
+
+const pad = { top: 20, right: 20, bottom: 35, left: 50 };
+
+function drawGrid(ctx, w, h) {
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = C.grid;
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (h - pad.top - pad.bottom) * i / 4;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+  }
+}
+
+function drawLine(ctx, points, color, w, h, maxX, maxY, lineWidth) {
+  const pw = w - pad.left - pad.right;
+  const ph = h - pad.top - pad.bottom;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth || 2.5;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  points.forEach((p, i) => {
+    const x = pad.left + (p[0] / maxX) * pw;
+    const y = pad.top + ph - (p[1] / maxY) * ph;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+function fillArea(ctx, points, color, w, h, maxX, maxY, alpha) {
+  const pw = w - pad.left - pad.right;
+  const ph = h - pad.top - pad.bottom;
+  ctx.globalAlpha = alpha || 0.12;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(pad.left + (points[0][0] / maxX) * pw, pad.top + ph);
+  points.forEach(p => {
+    ctx.lineTo(pad.left + (p[0] / maxX) * pw, pad.top + ph - (p[1] / maxY) * ph);
+  });
+  ctx.lineTo(pad.left + (points[points.length - 1][0] / maxX) * pw, pad.top + ph);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function drawLabel(ctx, text, x, y, color, align) {
+  ctx.fillStyle = color || C.text;
+  ctx.font = '11px "Source Code Pro", monospace';
+  ctx.textAlign = align || 'center';
+  ctx.fillText(text, x, y);
+}
+
+// ===== Beta distribution PDF =====
+function logGamma(z) {
+  const c = [76.18009172947146, -86.50532032941677, 24.01409824083091,
+    -1.231739572450155, 0.001208650973866179, -0.000005395239384953];
+  let y = z, tmp = z + 5.5;
+  tmp -= (z + 0.5) * Math.log(tmp);
+  let ser = 1.000000000190015;
+  for (let j = 0; j < 6; j++) ser += c[j] / ++y;
+  return -tmp + Math.log(2.5066282746310005 * ser / z);
+}
+
+function betaPDF(x, a, b) {
+  if (x <= 0 || x >= 1) return 0;
+  const logB = logGamma(a) + logGamma(b) - logGamma(a + b);
+  return Math.exp((a - 1) * Math.log(x) + (b - 1) * Math.log(1 - x) - logB);
+}
+
+// ===== Variance reduction for n-th observation =====
+// Beta(1,1) prior. After n observations (half success), params: a=1+n/2, b=1+n/2
+// Variance = ab / ((a+b)^2 (a+b+1))
+function varAfterN(n) {
+  const a = 1 + Math.round(n * 0.5);
+  const b = 1 + (n - Math.round(n * 0.5));
+  return (a * b) / ((a + b) * (a + b) * (a + b + 1));
+}
+
+function marginalValue(n) {
+  // Variance reduction from (n-1) to n observations
+  if (n <= 0) return 0;
+  return varAfterN(n - 1) - varAfterN(n);
+}
+
+// ===== 0. Hero Counter Animation =====
+(function animateCounter() {
+  const el = document.getElementById('hero-counter');
+  const target = 1200;
+  const duration = 2200;
+  const startDelay = 800;
+  let startTime = null;
+
+  function easeOut(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+    if (elapsed < startDelay) {
+      requestAnimationFrame(step);
+      return;
+    }
+    const progress = Math.min((elapsed - startDelay) / duration, 1);
+    const current = Math.round(easeOut(progress) * target);
+    el.textContent = current.toLocaleString();
+    if (progress < 1) requestAnimationFrame(step);
+  }
+
+  requestAnimationFrame(step);
+})();
+
+// ===== 1. Ratio Slider =====
+function updateRatio() {
+  const n = parseInt(document.getElementById('ratio-slider').value);
+  document.getElementById('ratio-n-val').textContent = n + '件目';
+
+  const mv1 = marginalValue(1);
+  const mvN = marginalValue(n);
+  const ratio = mvN > 0 ? Math.round(mv1 / mvN) : 99999;
+
+  document.getElementById('ratio-result').textContent = ratio.toLocaleString() + '倍';
+  document.getElementById('ratio-n-label').textContent = n;
+  document.getElementById('ratio-x-label').textContent = ratio.toLocaleString();
+
+  const insight = document.getElementById('ratio-insight');
+  const yen = Math.round(10000 / ratio);
+
+  if (ratio <= 5) {
+    insight.textContent = `まだ${n}件目なので、1件目と大差ありません。どちらも価値が高い！`;
+  } else if (ratio <= 50) {
+    insight.textContent = `1件目を1万円札だとすると、${n}件目は約${yen.toLocaleString()}円の価値です。`;
+  } else if (ratio <= 500) {
+    insight.textContent = `1件目を1万円札だとすると、${n}件目は約${yen}円。ジュースも買えません。`;
+  } else if (ratio <= 5000) {
+    insight.textContent = `1件目を1万円札だとすると、${n}件目は約${yen}円。ほぼ拾った小銭レベルです。`;
+  } else {
+    insight.textContent = `1件目を1万円札だとすると、${n}件目は1円未満。もはや情報としてほぼ無価値です。`;
+  }
+    insight.textContent = `1件目を1万円札だとすると、${n}件目は約${yen.toLocaleString()}円の価値。桁が変わってきます。`;
+}
+
+document.getElementById('ratio-slider').addEventListener('input', updateRatio);
+updateRatio();
+
+// ===== 2. Ramen Simulation =====
+let ramenState = { successes: 0, failures: 0, history: [], trueRate: 0 };
+
+function ramenReset() {
+  ramenState = {
+    successes: 0,
+    failures: 0,
+    history: [],
+    trueRate: 0.3 + Math.random() * 0.5,
+  };
+  document.getElementById('ramen-log').innerHTML = '';
+  updateRamenBar();
+  document.getElementById('ramen-insight').textContent =
+    'まだ行ったことがありません。最初の1件が一番大きく予想を動かしますよ！';
+}
+
+function updateRamenBar() {
+  const a = 1 + ramenState.successes;
+  const b = 1 + ramenState.failures;
+  const mean = a / (a + b);
+  const pct = Math.round(mean * 100);
+  const bar = document.getElementById('ramen-bar');
+  bar.style.width = pct + '%';
+  bar.textContent = pct + '%';
+
+  if (mean > 0.55) {
+    bar.style.background = C.green;
+  } else if (mean < 0.45) {
+    bar.style.background = C.red;
+  } else {
+    bar.style.background = C.blue;
+  }
+}
+
+document.getElementById('ramen-go').addEventListener('click', function () {
+  const result = Math.random() < ramenState.trueRate;
+  const prevA = 1 + ramenState.successes;
+  const prevB = 1 + ramenState.failures;
+  const prevMean = prevA / (prevA + prevB);
+
+  if (result) ramenState.successes++;
+  else ramenState.failures++;
+
+  const newA = 1 + ramenState.successes;
+  const newB = 1 + ramenState.failures;
+  const newMean = newA / (newA + newB);
+  const shift = Math.abs(newMean - prevMean);
+  const total = ramenState.successes + ramenState.failures;
+
+  ramenState.history.push({ result, shift, total });
+
+  updateRamenBar();
+
+  const log = document.getElementById('ramen-log');
+  const entry = document.createElement('div');
+  entry.className = 'entry';
+  entry.innerHTML = `
+    <div class="dot" style="background: ${result ? C.green : C.red};"></div>
+    <span>${total}回目：${result ? '美味しい！' : 'うーん普通…'}</span>
+    <span class="shift">予想が ${(shift * 100).toFixed(1)}%pt 動いた</span>
+  `;
+  log.insertBefore(entry, log.firstChild);
+
+  const insight = document.getElementById('ramen-insight');
+  if (total === 1) {
+    insight.textContent = `初めての1件で予想が ${(shift * 100).toFixed(1)}%pt 動きました！ これが最も大きな動きです。`;
+  } else if (total <= 5) {
+    const firstShift = ramenState.history[0].shift;
+    insight.textContent = `${total}件目の動き: ${(shift * 100).toFixed(1)}%pt（1件目は ${(firstShift * 100).toFixed(1)}%pt でした）`;
+  } else {
+    const firstShift = ramenState.history[0].shift;
+    const ratio = firstShift / shift;
+    insight.textContent = `${total}件目の動き: ${(shift * 100).toFixed(1)}%pt → 1件目の約 ${ratio.toFixed(0)}分の1 しか動かなくなりました`;
+  }
+});
+
+document.getElementById('ramen-reset').addEventListener('click', ramenReset);
+ramenReset();
+
+// ===== 3. Marginal Value Chart =====
+document.getElementById('marginal-btn').addEventListener('click', function () {
+  const { ctx, w, h } = getCtx('marginal-chart');
+  drawGrid(ctx, w, h);
+
+  const maxN = 50;
+  const margPts = [];
+  const cumulPts = [];
+  const initVar = 1 / 12;
+
+  for (let n = 1; n <= maxN; n++) {
+    const mv = marginalValue(n);
+    margPts.push([n, mv]);
+    cumulPts.push([n, 1 - varAfterN(n) / initVar]);
+  }
+
+  const maxMarg = margPts[0][1];
+  const mNorm = margPts.map(p => [p[0], p[1] / maxMarg]);
+
+  fillArea(ctx, mNorm, C.accent, w, h, maxN, 1, 0.15);
+  drawLine(ctx, mNorm, C.accent, w, h, maxN, 1);
+  drawLine(ctx, cumulPts, C.blue, w, h, maxN, 1);
+
+  const pw = w - pad.left - pad.right;
+  drawLabel(ctx, '1', pad.left, h - pad.bottom + 15, C.text);
+  drawLabel(ctx, '25', pad.left + pw / 2, h - pad.bottom + 15, C.text);
+  drawLabel(ctx, '50', pad.left + pw, h - pad.bottom + 15, C.text, 'right');
+  drawLabel(ctx, '何件目？', pad.left + pw / 2, h - 3, C.text);
+  drawLabel(ctx, '100%', pad.left - 5, pad.top + 5, C.text, 'right');
+  drawLabel(ctx, '0', pad.left - 5, h - pad.bottom, C.text, 'right');
+
+  document.getElementById('marginal-insight').textContent =
+    `1件目を100%として → 5件目: ${(mNorm[4][1] * 100).toFixed(0)}% ｜ 10件目: ${(mNorm[9][1] * 100).toFixed(0)}% ｜ 50件目: ${(mNorm[49][1] * 100).toFixed(0)}%`;
+});
+
+// ===== 4. Bayesian Update Chart =====
+function drawBayes() {
+  const n = parseInt(document.getElementById('bayes-slider').value);
+  document.getElementById('bayes-val').textContent = n + '件';
+
+  const a0 = 1 + Math.round(n * 0.5);
+  const b0 = 1 + (n - Math.round(n * 0.5));
+  const a1 = a0 + 1;
+  const b1 = b0;
+
+  const { ctx, w, h } = getCtx('bayes-chart');
+  drawGrid(ctx, w, h);
+
+  const steps = 200;
+  const priorPts = [], postPts = [];
+  let maxPDF = 0;
+
+  for (let i = 0; i <= steps; i++) {
+    const x = i / steps;
+    const pv = betaPDF(x, a0, b0);
+    const qv = betaPDF(x, a1, b1);
+    priorPts.push([x * 100, pv]);
+    postPts.push([x * 100, qv]);
+    maxPDF = Math.max(maxPDF, pv, qv);
+  }
+  if (maxPDF === 0) maxPDF = 1;
+
+  const pNorm = priorPts.map(p => [p[0], p[1] / maxPDF]);
+  const qNorm = postPts.map(p => [p[0], p[1] / maxPDF]);
+
+  fillArea(ctx, pNorm, C.accent, w, h, 100, 1, 0.12);
+  drawLine(ctx, pNorm, C.accent, w, h, 100, 1);
+  drawLine(ctx, qNorm, C.blue, w, h, 100, 1);
+
+  const pw = w - pad.left - pad.right;
+  drawLabel(ctx, '0%', pad.left, h - pad.bottom + 15, C.text);
+  drawLabel(ctx, '50%', pad.left + pw / 2, h - pad.bottom + 15, C.text);
+  drawLabel(ctx, '100%', pad.left + pw, h - pad.bottom + 15, C.text, 'right');
+  drawLabel(ctx, '成功率', pad.left + pw / 2, h - 3, C.text);
+
+  const priorMean = a0 / (a0 + b0);
+  const postMean = a1 / (a1 + b1);
+  const shift = Math.abs(postMean - priorMean);
+
+  const insight = document.getElementById('bayes-insight');
+  if (n === 0) {
+    insight.textContent = `データ0件：予想が ${(shift * 100).toFixed(1)}%pt 動く！ 平らな山 → まだ何もわかっていない状態です。`;
+  } else if (n <= 10) {
+    insight.textContent = `データ${n}件：1件追加で ${(shift * 100).toFixed(1)}%pt 動く。山がだんだん尖ってきました。`;
+  } else {
+    insight.textContent = `データ${n}件：1件追加で ${(shift * 100).toFixed(2)}%pt しか動かない。もう十分知っている状態です。`;
+  }
+}
+
+document.getElementById('bayes-slider').addEventListener('input', drawBayes);
+drawBayes();
+
+// ===== 5. Power / Sample Size Chart =====
+function drawPower() {
+  const baseCVR = parseInt(document.getElementById('power-base').value) / 100;
+  const newCVR = parseInt(document.getElementById('power-new').value) / 100;
+  document.getElementById('power-base-val').textContent = Math.round(baseCVR * 100) + '%';
+  document.getElementById('power-new-val').textContent = Math.round(newCVR * 100) + '%';
+
+  const effectiveCVR = Math.max(newCVR, baseCVR + 0.005);
+  const pBar = (baseCVR + effectiveCVR) / 2;
+  const requiredN = Math.ceil(16 * pBar * (1 - pBar) / Math.pow(effectiveCVR - baseCVR, 2));
+
+  const { ctx, w, h } = getCtx('power-chart');
+  drawGrid(ctx, w, h);
+
+  const maxN = Math.min(Math.max(requiredN * 1.3, 100), 20000);
+  const steps = 200;
+  const infoPoints = [];
+
+  for (let i = 0; i <= steps; i++) {
+    const n = Math.round((i / steps) * maxN);
+    const info = n === 0 ? 0 : Math.log2(n + 2) / Math.log2(maxN + 2);
+    infoPoints.push([i / steps * 100, info]);
+  }
+
+  fillArea(ctx, infoPoints, C.accent, w, h, 100, 1, 0.1);
+  drawLine(ctx, infoPoints, C.accent, w, h, 100, 1);
+
+  const pw = w - pad.left - pad.right;
+  const ph = h - pad.top - pad.bottom;
+  const reqX = pad.left + (requiredN / maxN) * pw;
+
+  if (reqX < w - pad.right) {
+    ctx.strokeStyle = C.red;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(reqX, pad.top);
+    ctx.lineTo(reqX, pad.top + ph);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    drawLabel(ctx, `n=${requiredN.toLocaleString()}`, reqX, pad.top - 5, C.red);
+    drawLabel(ctx, '検定ライン', reqX, pad.top + 15, C.red);
+  }
+
+  drawLabel(ctx, '0', pad.left, h - pad.bottom + 15, C.text);
+  drawLabel(ctx, Math.round(maxN / 2).toLocaleString(), pad.left + pw / 2, h - pad.bottom + 15, C.text);
+  drawLabel(ctx, Math.round(maxN).toLocaleString() + '件', pad.left + pw, h - pad.bottom + 15, C.text, 'right');
+
+  const insight = document.getElementById('power-insight');
+  if (requiredN > 5000) {
+    insight.textContent = `各群 ${requiredN.toLocaleString()}件必要（月100件なら ${Math.ceil(requiredN / 100)}ヶ月 ≒ ${(requiredN / 100 / 12).toFixed(1)}年）。でもベイズ的には最初の数件で急速に学べます。`;
+  } else {
+    insight.textContent = `各群 ${requiredN.toLocaleString()}件必要。効果量が大きいほど少ないデータでも検出できますが、それでもベイズ的な学びは1件目から始まっています。`;
+  }
+}
+
+document.getElementById('power-base').addEventListener('input', drawPower);
+document.getElementById('power-new').addEventListener('input', drawPower);
+drawPower();
+
+// ===== Resize =====
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    drawBayes();
+    drawPower();
+  }, 200);
+});
+</script>
+
+</body>
+</html>
