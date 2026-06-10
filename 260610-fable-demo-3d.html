@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ビーンブーツ 3D ビュー</title>
+<style>
+  :root{
+    --tan:#c98c42; --rubber:#3e332b; --paper:#e9e6e0; --ink:#2b261f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--paper);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;color:var(--ink)}
+  #c{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+  #c:active{cursor:grabbing}
+  .hud{position:fixed;left:24px;top:22px;pointer-events:none;user-select:none}
+  .hud h1{font-size:15px;letter-spacing:.18em;font-weight:600}
+  .hud p{font-size:11px;letter-spacing:.12em;opacity:.55;margin-top:6px}
+  .ctrl{position:fixed;right:20px;top:20px;display:flex;gap:8px}
+  .ctrl button{
+    pointer-events:auto;font:inherit;font-size:11px;letter-spacing:.1em;
+    padding:8px 14px;border:1px solid rgba(43,38,31,.35);border-radius:999px;
+    background:rgba(255,255,255,.55);backdrop-filter:blur(6px);color:var(--ink);cursor:pointer;
+    transition:background .2s,border-color .2s}
+  .ctrl button:hover{background:#fff}
+  .ctrl button.on{background:var(--ink);color:#f3efe8;border-color:var(--ink)}
+  .hint{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+    font-size:10.5px;letter-spacing:.14em;opacity:.45;user-select:none;pointer-events:none}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud">
+  <h1>BEAN BOOT — 6&Prime; DUCK BOOT</h1>
+  <p>手続き生成による近似モデル</p>
+</div>
+<div class="ctrl">
+  <button id="spin" class="on">自動回転</button>
+  <button id="reset">視点リセット</button>
+</div>
+<div class="hint">ドラッグで回転 ・ ホイール / ピンチでズーム</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============ helpers ============ */
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const sstep=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
+const mix=(a,b,t)=>a+(b-a)*t;
+// cosine-interp profile sampler: pts = [[u,val],...] sorted
+function prof(pts,u){
+  u=clamp(u,pts[0][0],pts[pts.length-1][0]);
+  for(let i=0;i<pts.length-1;i++){
+    const[a,va]=pts[i],[b,vb]=pts[i+1];
+    if(u<=b){const t=(u-a)/(b-a);return mix(va,vb,(1-Math.cos(t*Math.PI))/2);}
+  }
+  return pts[pts.length-1][1];
+}
+// parametric BufferGeometry
+function paramGeo(fn,nu,nv,closedV=false){
+  const pos=[],idx=[],uvs=[];
+  const NV=closedV?nv:nv+1;
+  for(let i=0;i<=nu;i++){
+    const u=i/nu;
+    for(let j=0;j<NV;j++){
+      const v=closedV?j/nv:j/nv;
+      const p=fn(u,v);
+      pos.push(p.x,p.y,p.z);uvs.push(u,v);
+    }
+  }
+  const cols=NV;
+  for(let i=0;i<nu;i++)for(let j=0;j<nv;j++){
+    const a=i*cols+j, b=i*cols+((j+1)%cols), c=(i+1)*cols+((j+1)%cols), d=(i+1)*cols+j;
+    idx.push(a,b,d, b,c,d);
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+  g.setIndex(idx);g.computeVertexNormals();
+  return g;
+}
+
+/* ============ scene ============ */
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.06;
+renderer.outputEncoding=THREE.sRGBEncoding;
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xe9e6e0);
+scene.fog=new THREE.Fog(0xe9e6e0,14,30);
+
+const camera=new THREE.PerspectiveCamera(38,1,0.1,100);
+
+// lights — soft entryway daylight
+scene.add(new THREE.HemisphereLight(0xfff6e8,0xb9ae9c,0.55));
+const key=new THREE.DirectionalLight(0xfff1dd,1.15);
+key.position.set(4.5,7,5);
+key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);
+key.shadow.camera.left=-5;key.shadow.camera.right=5;
+key.shadow.camera.top=5;key.shadow.camera.bottom=-5;
+key.shadow.camera.far=25;key.shadow.bias=-0.0004;key.shadow.radius=4;
+scene.add(key);
+const fill=new THREE.DirectionalLight(0xdfe8f2,0.35);
+fill.position.set(-5,3,-4);scene.add(fill);
+const rim=new THREE.DirectionalLight(0xffffff,0.25);
+rim.position.set(0,4,-7);scene.add(rim);
+
+// floor
+const floor=new THREE.Mesh(
+  new THREE.CircleGeometry(16,64),
+  new THREE.MeshStandardMaterial({color:0xd8d4cc,roughness:0.95,metalness:0})
+);
+floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+
+/* ============ materials ============ */
+const M={
+  leather:new THREE.MeshStandardMaterial({color:0xc98c42,roughness:0.46,metalness:0.04,side:THREE.DoubleSide}),
+  suede:new THREE.MeshStandardMaterial({color:0x8a6a44,roughness:1,metalness:0,side:THREE.BackSide}),
+  rubber:new THREE.MeshPhysicalMaterial({color:0x3a2f26,roughness:0.34,metalness:0.05,clearcoat:0.55,clearcoatRoughness:0.35}),
+  sole:new THREE.MeshStandardMaterial({color:0xc6b078,roughness:0.85,metalness:0}),
+  lace:new THREE.MeshStandardMaterial({color:0xb05a1c,roughness:0.32,metalness:0.35}),
+  brass:new THREE.MeshStandardMaterial({color:0x9a8146,roughness:0.35,metalness:0.85}),
+  stitch:new THREE.LineDashedMaterial({color:0xf3ead8,dashSize:0.045,gapSize:0.035})
+};
+
+/* ============ boot builder ============ */
+function buildBoot(){
+  const boot=new THREE.Group();
+
+  /* ---- rubber bottom (duck shell) ---- */
+  const L=2.7; // foot length
+  const rzP=[[0,0.05],[0.07,0.33],[0.2,0.43],[0.45,0.41],[0.66,0.50],[0.84,0.43],[0.95,0.24],[1,0.04]];
+  const ryP=[[0,0.05],[0.07,0.50],[0.22,0.62],[0.5,0.60],[0.7,0.55],[0.9,0.40],[0.97,0.18],[1,0.04]];
+  const footFn=(u,v)=>{
+    const th=v*Math.PI*2;             // 0 = +z side
+    let rz=prof(rzP,u), ry=prof(ryP,u);
+    // rounded end caps
+    const cap=Math.pow(Math.sin(Math.PI*clamp(u,0.001,0.999)),0.22);
+    rz*=cap; ry*=cap;
+    // vertical flutes on the vamp (upper-front)
+    const up=Math.sin(th);
+    const ribMask=sstep(0.05,0.55,up)*sstep(0.18,0.45,u);
+    const ribs=0.045*Math.pow(Math.abs(Math.sin(th*6.5)),1.6)*ribMask;
+    rz*=(1+ribs); ry*=(1+ribs);
+    // flatten bottom
+    const s=up<0?mix(1,0.52,sstep(0,0.6,-up)):1;
+    const lift=0.22*sstep(0.78,1,u)+0.06*sstep(0.12,0,u); // toe spring + heel
+    const bottomY=0.10+lift;
+    const yc=bottomY+0.52*ry;
+    return new THREE.Vector3(u*L, yc+ry*up*s, rz*Math.cos(th));
+  };
+  const shell=new THREE.Mesh(paramGeo(footFn,110,72,true),M.rubber);
+  shell.castShadow=true;shell.receiveShadow=true;boot.add(shell);
+
+  /* ---- chain-link sole rim ---- */
+  const outline=[];
+  for(let i=0;i<=40;i++){const u=0.03+0.94*(i/40);
+    outline.push(new THREE.Vector3(u*L,0.085,prof(rzP,u)*Math.pow(Math.sin(Math.PI*u),0.22)*1.04));}
+  for(let i=40;i>=0;i--){const u=0.03+0.94*(i/40);
+    outline.push(new THREE.Vector3(u*L,0.085,-prof(rzP,u)*Math.pow(Math.sin(Math.PI*u),0.22)*1.04));}
+  const rimCurve=new THREE.CatmullRomCurve3(outline,true,'catmullrom',0.5);
+  const beads=rimCurve.getSpacedPoints(96);
+  const beadGeo=new THREE.SphereGeometry(0.088,10,8);
+  const chain=new THREE.InstancedMesh(beadGeo,M.sole,beads.length);
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),s3=new THREE.Vector3();
+  beads.forEach((p,i)=>{
+    const sc=0.9+0.25*Math.abs(Math.sin(i*1.7));
+    s3.set(sc,0.78,sc);
+    m4.compose(p,q,s3);chain.setMatrixAt(i,m4);
+  });
+  chain.castShadow=true;boot.add(chain);
+  // flat midsole edge under the shell
+  const mid=new THREE.Mesh(
+    new THREE.TubeGeometry(rimCurve,120,0.05,8,true),M.sole);
+  mid.position.y=0.04;boot.add(mid);
+
+  /* ---- leather shaft ---- */
+  const y0=0.42,y1=2.12;
+  const gapA=v=>0.34+0.34*v;                    // front lacing gap half-angle
+  const shaftR=v=>({rx:mix(0.52,0.55,v),rz:mix(0.40,0.44,v),cx:mix(0.92,0.78,v)});
+  function shaftPt(v,th,inset=0){
+    const{rx,rz,cx}=shaftR(v);
+    return new THREE.Vector3(
+      cx+(rx-inset)*Math.cos(th),
+      mix(y0,y1,v),
+      (rz-inset)*Math.sin(th));
+  }
+  const shaftFn=(u,v)=>{ // u: around, v: height ; gap kept at front (th=0)
+    const g=gapA(v);
+    const th=g+(Math.PI*2-2*g)*u;
+    return shaftPt(v,th);
+  };
+  const shaft=new THREE.Mesh(paramGeo(shaftFn,80,30),M.leather);
+  shaft.castShadow=true;boot.add(shaft);
+  const lining=new THREE.Mesh(paramGeo((u,v)=>{
+    const g=gapA(v),th=g+(Math.PI*2-2*g)*u;
+    return shaftPt(v,th,0.03);},60,24),M.suede);
+  boot.add(lining);
+  // rolled top edge
+  const topPts=[];for(let i=0;i<=40;i++){const g=gapA(1),th=g+(Math.PI*2-2*g)*(i/40);topPts.push(shaftPt(1,th));}
+  const topEdge=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(topPts),60,0.022,8),M.leather);
+  boot.add(topEdge);
+
+  /* ---- tongue ---- */
+  const tongueFn=(u,v)=>{
+    const g=gapA(Math.min(v,1))*1.5;
+    const th=-g+2*g*u;
+    const p=shaftPt(Math.min(v*1.06,1.06),th,0.05);
+    p.x+=0.05*Math.sin(Math.PI*u)*(0.4+0.6*v);          // bulge out
+    p.y=mix(y0+0.05,y1+0.16,v);
+    const edge=Math.pow(Math.sin(Math.PI*clamp(v,0.01,0.99)),0.12);
+    p.z*= (0.7+0.3*edge);
+    return p;
+  };
+  const tongue=new THREE.Mesh(paramGeo(tongueFn,26,26),M.leather);
+  tongue.castShadow=true;boot.add(tongue);
+
+  /* ---- triple stitch at rubber/leather seam ---- */
+  for(let k=0;k<3;k++){
+    const h=(0.50+0.065*k-y0)/(y1-y0);
+    const pts=[];
+    for(let i=0;i<=72;i++){const g=gapA(h)*0.9,th=g+(Math.PI*2-2*g)*(i/72);
+      pts.push(shaftPt(h,th,-0.012));}
+    const g2=new THREE.BufferGeometry().setFromPoints(pts);
+    const line=new THREE.Line(g2,M.stitch);
+    line.computeLineDistances();boot.add(line);
+  }
+
+  /* ---- eyelets + laces ---- */
+  const eyeL=[],eyeR=[];
+  const ringGeo=new THREE.TorusGeometry(0.05,0.017,8,18);
+  for(let i=0;i<5;i++){
+    const v=0.16+0.18*i;
+    for(const sgn of[1,-1]){
+      const th=sgn*(gapA(v)+0.16);
+      const p=shaftPt(v,th);
+      const ring=new THREE.Mesh(ringGeo,M.brass);
+      ring.position.copy(p);
+      const n=new THREE.Vector3(Math.cos(th),0.15,Math.sin(th)).normalize();
+      ring.lookAt(p.clone().add(n));
+      ring.castShadow=true;boot.add(ring);
+      (sgn>0?eyeR:eyeL).push(p.clone().add(n.multiplyScalar(0.02)));
+    }
+  }
+  function laceTube(points,r=0.034){
+    const c=new THREE.CatmullRomCurve3(points,false,'catmullrom',0.6);
+    const t=new THREE.Mesh(new THREE.TubeGeometry(c,90,r,8),M.lace);
+    t.castShadow=true;return t;
+  }
+  const over=(a,b)=>{const m=a.clone().lerp(b,0.5);m.x+=0.10;return m;};
+  // strand A: L0→R1→L2→R3→L4 then dangle right-front
+  const A=[eyeL[0],over(eyeL[0],eyeR[1]),eyeR[1],over(eyeR[1],eyeL[2]),eyeL[2],
+           over(eyeL[2],eyeR[3]),eyeR[3],over(eyeR[3],eyeL[4]),eyeL[4]];
+  const aEnd=eyeL[4].clone();
+  A.push(new THREE.Vector3(aEnd.x+0.45,aEnd.y+0.05,aEnd.z+0.15),
+         new THREE.Vector3(aEnd.x+1.05,aEnd.y-0.9,aEnd.z+0.55),
+         new THREE.Vector3(aEnd.x+1.5,0.06,aEnd.z+0.85),
+         new THREE.Vector3(aEnd.x+1.95,0.045,aEnd.z+0.7));
+  // strand B: R0→L1→R2→L3→R4 then dangle left
+  const B=[eyeR[0],over(eyeR[0],eyeL[1]),eyeL[1],over(eyeL[1],eyeR[2]),eyeR[2],
+           over(eyeR[2],eyeL[3]),eyeL[3],over(eyeL[3],eyeR[4]),eyeR[4]];
+  const bEnd=eyeR[4].clone();
+  B.push(new THREE.Vector3(bEnd.x+0.4,bEnd.y,bEnd.z-0.25),
+         new THREE.Vector3(bEnd.x+0.85,bEnd.y-1.0,bEnd.z-0.7),
+         new THREE.Vector3(bEnd.x+1.2,0.06,bEnd.z-1.05));
+  boot.add(laceTube(A),laceTube(B));
+
+  /* ---- back pull tab ---- */
+  const tabShape=new THREE.Shape();
+  const w=0.16,h=0.46,r=0.07;
+  tabShape.moveTo(-w,0);tabShape.lineTo(-w,h-r);
+  tabShape.quadraticCurveTo(-w,h,-w+r,h);tabShape.lineTo(w-r,h);
+  tabShape.quadraticCurveTo(w,h,w,h-r);tabShape.lineTo(w,0);tabShape.lineTo(-w,0);
+  const hole=new THREE.Path();
+  hole.absellipse(0,h-0.16,0.085,0.075,0,Math.PI*2);
+  tabShape.holes.push(hole);
+  const tab=new THREE.Mesh(new THREE.ExtrudeGeometry(tabShape,{depth:0.035,bevelEnabled:false}),M.leather);
+  const back=shaftPt(1,Math.PI);
+  tab.position.set(back.x-0.015,back.y-0.12,back.z-0.0175);
+  tab.rotation.y=Math.PI/2;tab.rotation.x=-0.12;
+  tab.castShadow=true;boot.add(tab);
+
+  return boot;
+}
+
+/* ============ pair, like the photo ============ */
+const pair=new THREE.Group();
+const left=buildBoot(); left.position.z= 0.52; left.rotation.y= 0.10;
+const right=buildBoot();right.position.z=-0.52; right.rotation.y=-0.07;
+pair.add(left,right);
+pair.position.x=-1.35;
+scene.add(pair);
+
+/* ============ custom orbit controls ============ */
+const target=new THREE.Vector3(0,0.95,0);
+const HOME={theta:0.85,phi:1.12,dist:6.2};
+let theta=HOME.theta,phi=HOME.phi,dist=HOME.dist;
+let dragging=false,px=0,py=0,pinch=0;
+function applyCam(){
+  phi=clamp(phi,0.25,1.52);dist=clamp(dist,3,14);
+  camera.position.set(
+    target.x+dist*Math.sin(phi)*Math.sin(theta),
+    target.y+dist*Math.cos(phi),
+    target.z+dist*Math.sin(phi)*Math.cos(theta));
+  camera.lookAt(target);
+}
+canvas.addEventListener('pointerdown',e=>{dragging=true;px=e.clientX;py=e.clientY;canvas.setPointerCapture(e.pointerId);autoSpin=false;spinBtn.classList.remove('on');});
+canvas.addEventListener('pointermove',e=>{if(!dragging)return;
+  theta-=(e.clientX-px)*0.0055;phi-=(e.clientY-py)*0.0045;px=e.clientX;py=e.clientY;});
+canvas.addEventListener('pointerup',()=>dragging=false);
+canvas.addEventListener('wheel',e=>{e.preventDefault();dist*=1+Math.sign(e.deltaY)*0.08;},{passive:false});
+canvas.addEventListener('touchmove',e=>{if(e.touches.length===2){
+  const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+  if(pinch)dist*=pinch/d;pinch=d;}},{passive:true});
+canvas.addEventListener('touchend',()=>pinch=0);
+
+/* ============ UI ============ */
+let autoSpin=true;
+const spinBtn=document.getElementById('spin');
+spinBtn.onclick=()=>{autoSpin=!autoSpin;spinBtn.classList.toggle('on',autoSpin);};
+document.getElementById('reset').onclick=()=>{theta=HOME.theta;phi=HOME.phi;dist=HOME.dist;};
+
+/* ============ loop ============ */
+function resize(){
+  const w=innerWidth,h=innerHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+addEventListener('resize',resize);resize();
+const clock=new THREE.Clock();
+(function tick(){
+  requestAnimationFrame(tick);
+  if(autoSpin&&!dragging)theta+=clock.getDelta()*0.25; else clock.getDelta();
+  applyCam();
+  renderer.render(scene,camera);
+})();
+</script>
+</body>
+</html>
