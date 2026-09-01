@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>アイキャッチエディター — 余白カット・明るさ補正・幅1200px</title>
+<style>
+  :root {
+    --paper: #eceef0;
+    --ink: #1f2326;
+    --ink-soft: #5c6469;
+    --line: #cfd4d8;
+    --tray: #9a9fa4;      /* 中性グレー：色味を正しく見るためのプレビュー地 */
+    --accent: #1f5fd0;
+    --accent-ink: #ffffff;
+    --ok: #1d8a4a;
+    --warn: #b4551a;
+    --radius: 4px;
+    --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic Medium", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.6; }
+  a { color: var(--accent); }
+
+  header {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 24px;
+    padding: 28px 32px 16px; border-bottom: 1px solid var(--line);
+  }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; }
+  header p { margin: 0; color: var(--ink-soft); font-size: 13px; max-width: 60ch; }
+
+  main { display: grid; grid-template-columns: 300px minmax(0,1fr); min-height: calc(100vh - 78px); }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } aside { border-right: none; border-bottom: 1px solid var(--line); } }
+
+  aside { border-right: 1px solid var(--line); padding: 24px; }
+  aside h2 { font-size: 13px; font-weight: 600; margin: 0 0 12px; color: var(--ink-soft); }
+  fieldset { border: none; margin: 0 0 28px; padding: 0; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .row label { flex: 1; }
+  .row output { min-width: 3.5em; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+  input[type=range] { width: 100%; margin: 0 0 14px; accent-color: var(--accent); }
+  input[type=number] { width: 88px; padding: 4px 6px; border: 1px solid var(--line); border-radius: var(--radius); font: inherit; background: #fff; }
+  input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
+  .hint { color: var(--ink-soft); font-size: 12px; margin: -6px 0 14px; }
+  select { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
+  .sub { display: none; } .sub.on { display: block; }
+
+  section { padding: 24px 32px; min-width: 0; }
+  .drop {
+    display: block; width: 100%;
+    border: 2px dashed var(--line); border-radius: var(--radius); padding: 40px 24px; text-align: center;
+    background: #fff; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); background: #f4f7fd; }
+  .drop strong { display: block; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .drop span { display: block; color: var(--ink-soft); font-size: 13px; }
+  .drop input { display: none; }
+
+  .toolbar { display: flex; align-items: center; gap: 12px; margin: 20px 0 12px; flex-wrap: wrap; }
+  .toolbar .spacer { flex: 1; }
+  button {
+    font: inherit; padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--line);
+    background: #fff; color: var(--ink); cursor: pointer;
+  }
+  button:hover { border-color: var(--ink-soft); }
+  button:focus-visible, .drop:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.primary:hover { background: #1a51b3; }
+  button:disabled { opacity: .45; cursor: default; }
+  .count { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+  .item {
+    display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) 220px; gap: 16px; align-items: start;
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+  }
+  @media (max-width: 1100px) { .item { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } .item .meta { grid-column: 1 / -1; } }
+  .frame { position: relative; background: var(--tray); border-radius: var(--radius); overflow: hidden; aspect-ratio: 4 / 3; min-width: 0; }
+  .frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+  .frame.edit { display: flex; align-items: center; justify-content: center; }
+  .frame.edit canvas { max-width: 100%; max-height: 100%; display: block; cursor: crosshair; touch-action: none; user-select: none; }
+  .frame .help { position: absolute; right: 8px; bottom: 8px; font-size: 11px; background: rgba(31,35,38,.75); color: #fff; padding: 2px 8px; border-radius: 3px; pointer-events: none; }
+  .meta .row2 { display: flex; gap: 8px; } .meta .row2 button { flex: 1; }
+  .frame .tag { position: absolute; left: 8px; top: 8px; font-size: 11px; background: rgba(31,35,38,.75); color: #fff; padding: 2px 8px; border-radius: 3px; z-index: 1; }
+  .meta { font-size: 13px; }
+  .meta .name { font-weight: 600; word-break: break-all; margin-bottom: 8px; }
+  .meta dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0 0 12px; }
+  .meta dt { color: var(--ink-soft); }
+  .meta dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .meta .note { color: var(--warn); font-size: 12px; margin-bottom: 8px; }
+  .meta .note.ok { color: var(--ok); }
+  .meta button { width: 100%; }
+  .empty { color: var(--ink-soft); text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>画像整え</h1>
+  <p>余白をカットして明るさを整え、横幅1200pxのJPEGに書き出します。画像はこの端末の中だけで処理され、どこにも送信されません。</p>
+</header>
+
+<main>
+  <aside>
+    <fieldset>
+      <h2>トリミング</h2>
+      <div class="row"><label for="cropMode">方式</label>
+        <select id="cropMode">
+          <option value="subject">被写体を中央に</option>
+          <option value="margin">余白を切り落とす</option>
+          <option value="none">しない</option>
+        </select></div>
+      <div class="sub" id="subSubject">
+        <div class="row"><label for="ratio">縦横比</label>
+          <select id="ratio">
+            <option value="0">元のまま</option>
+            <option value="1.5">3:2（横）</option>
+            <option value="1.3333">4:3（横）</option>
+            <option value="1.7778">16:9（横）</option>
+            <option value="1">1:1</option>
+            <option value="0.8">4:5（縦）</option>
+            <option value="0.6667">2:3（縦）</option>
+          </select></div>
+        <div class="row"><label for="fill">被写体の大きさ</label><output id="fillOut">65%</output></div>
+        <input type="range" id="fill" min="40" max="95" value="65">
+        <p class="hint">画面の幅（または高さ）に対して被写体が占める割合。大きいほど寄ります。</p>
+        <div class="row"><label for="centerBias">中央付近を優先</label><output id="centerBiasOut">40%</output></div>
+        <input type="range" id="centerBias" min="0" max="100" value="40">
+        <p class="hint">被写体の判定が背景に引っぱられるときは上げてください。</p>
+      </div>
+      <div class="sub" id="subMargin">
+        <div class="row"><label for="trimTol">背景とみなす色の幅</label><output id="trimTolOut">24</output></div>
+        <input type="range" id="trimTol" min="4" max="80" value="24">
+        <p class="hint">白飛びした背景なら小さめ、影やムラがあるなら大きめ。</p>
+        <div class="row"><label for="trimPad">残す余白</label><output id="trimPadOut">3%</output></div>
+        <input type="range" id="trimPad" min="0" max="15" value="3">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <h2>明るさ・仕上がり</h2>
+      <div class="row"><label for="levelsOn">自動補正する</label><input type="checkbox" id="levelsOn" checked></div>
+      <div class="row"><label for="target">明るさ</label><output id="targetOut">150</output></div>
+      <input type="range" id="target" min="110" max="180" value="150">
+      <p class="hint">写真全体の平均的な明るさの目標。数字が大きいほど明るく。暗くする方向には働きません。</p>
+      <div class="row"><label for="soft">やわらかさ</label><output id="softOut">60%</output></div>
+      <input type="range" id="soft" min="0" max="100" value="60">
+      <p class="hint">黒を少し浮かせてコントラストを落とし、ふんわりした階調に。</p>
+      <div class="row"><label for="sat">彩度</label><output id="satOut">104%</output></div>
+      <input type="range" id="sat" min="70" max="125" value="104">
+      <div class="row"><label for="levelsAmt">補正の強さ</label><output id="levelsAmtOut">100%</output></div>
+      <input type="range" id="levelsAmt" min="0" max="100" value="100">
+    </fieldset>
+
+    <fieldset>
+      <h2>書き出し</h2>
+      <div class="row"><label for="width">横幅（px）</label><input type="number" id="width" value="1200" min="100" max="6000" step="10"></div>
+      <div class="row"><label for="quality">JPEG品質</label><output id="qualityOut">82</output></div>
+      <input type="range" id="quality" min="60" max="95" value="82">
+      <div class="row"><label for="upscale">小さい画像も横幅まで拡大する</label><input type="checkbox" id="upscale"></div>
+    </fieldset>
+  </aside>
+
+  <section>
+    <label class="drop" id="drop" tabindex="0">
+      <strong>ここに画像をドロップ</strong>
+      <span>またはクリックして選択（複数OK・JPEG / PNG / WebP / HEIC非対応）</span>
+      <input type="file" id="file" accept="image/*" multiple>
+    </label>
+
+    <div class="toolbar">
+      <span class="count" id="count">まだ画像がありません</span>
+      <span class="spacer"></span>
+      <button id="rerun" disabled>設定を反映して再処理</button>
+      <button id="clear" disabled>すべて消す</button>
+      <button id="zip" class="primary" disabled>まとめてダウンロード（ZIP）</button>
+    </div>
+
+    <div id="list"></div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const items = []; // { file, img, name, result: {blob, url, canvas, trim, info} }
+
+  // ---------- 設定 ----------
+  const settings = () => ({
+    cropMode: $('cropMode').value,
+    ratio: +$('ratio').value,
+    fill: +$('fill').value / 100,
+    centerBias: +$('centerBias').value / 100,
+    trimTol: +$('trimTol').value,
+    trimPad: +$('trimPad').value / 100,
+    levelsOn: $('levelsOn').checked,
+    levelsAmt: +$('levelsAmt').value / 100,
+    target: +$('target').value,
+    soft: +$('soft').value / 100,
+    sat: +$('sat').value / 100,
+    width: Math.max(100, +$('width').value || 1200),
+    quality: +$('quality').value / 100,
+    upscale: $('upscale').checked,
+  });
+  const bindOut = (id, fmt) => { const el = $(id), out = $(id + 'Out'); const f = () => out.textContent = fmt(el.value); el.addEventListener('input', f); f(); };
+  bindOut('fill', v => v + '%');
+  bindOut('centerBias', v => v + '%');
+  bindOut('trimTol', v => v);
+  bindOut('trimPad', v => v + '%');
+  bindOut('target', v => v);
+  bindOut('soft', v => v + '%');
+  bindOut('sat', v => v + '%');
+  bindOut('levelsAmt', v => v + '%');
+  bindOut('quality', v => v);
+  const syncMode = () => { const m = $('cropMode').value; $('subSubject').classList.toggle('on', m === 'subject'); $('subMargin').classList.toggle('on', m === 'margin'); };
+  $('cropMode').addEventListener('change', syncMode); syncMode();
+
+  // ---------- 画像処理 ----------
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('読み込めない形式です')); };
+      img.src = url;
+    });
+  }
+
+  // 解析用に縮小したImageDataを返す（速度のため）
+  function analysisData(img, maxSide = 700) {
+    const s = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * s)), h = Math.max(1, Math.round(img.naturalHeight * s));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, w, h);
+    return { data: ctx.getImageData(0, 0, w, h), scale: s };
+  }
+
+  // 余白検出：外周の色を背景色とみなし、そこから離れる画素が出るまで内側へ進む
+  function detectTrim(imgData, tol, pad) {
+    const { data, width: w, height: h } = imgData;
+    // 背景色 = 外周1px帯の中央値（明るさ順にソートして中央を取る）
+    const edge = [];
+    for (let x = 0; x < w; x++) { edge.push((0 * w + x) * 4, ((h - 1) * w + x) * 4); }
+    for (let y = 0; y < h; y++) { edge.push((y * w + 0) * 4, (y * w + (w - 1)) * 4); }
+    const bri = i => data[i] + data[i + 1] + data[i + 2];
+    edge.sort((a, b) => bri(a) - bri(b));
+    const m = edge[edge.length >> 1];
+    const bg = [data[m], data[m + 1], data[m + 2]];
+
+    const isBg = i => Math.abs(data[i] - bg[0]) + Math.abs(data[i + 1] - bg[1]) + Math.abs(data[i + 2] - bg[2]) <= tol * 3;
+    const rowIsBg = y => { let n = 0; for (let x = 0; x < w; x++) if (!isBg((y * w + x) * 4)) if (++n > w * 0.004 + 1) return false; return true; };
+    const colIsBg = x => { let n = 0; for (let y = 0; y < h; y++) if (!isBg((y * w + x) * 4)) if (++n > h * 0.004 + 1) return false; return true; };
+
+    let top = 0, bottom = h - 1, left = 0, right = w - 1;
+    while (top < bottom && rowIsBg(top)) top++;
+    while (bottom > top && rowIsBg(bottom)) bottom--;
+    while (left < right && colIsBg(left)) left++;
+    while (right > left && colIsBg(right)) right--;
+
+    const tw = right - left + 1, th = bottom - top + 1;
+    // ほぼ全面が「背景」扱い（単色画像など）なら切らない
+    if (tw < w * 0.1 || th < h * 0.1) return null;
+    // 何も切れないなら null
+    if (top === 0 && left === 0 && right === w - 1 && bottom === h - 1) return null;
+
+    const px = Math.round(tw * pad), py = Math.round(th * pad);
+    return {
+      x: Math.max(0, left - px), y: Math.max(0, top - py),
+      w: Math.min(w, right + px + 1) - Math.max(0, left - px),
+      h: Math.min(h, bottom + py + 1) - Math.max(0, top - py),
+      srcW: w, srcH: h,
+    };
+  }
+
+  // 被写体検出（MLなし）：ピントの合い具合・背景色との差・彩度から「目立ち度」を作り、その重心と広がりを取る
+  function detectSubject(img, centerBias) {
+    const maxSide = 260;
+    const sc = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(8, Math.round(img.naturalWidth * sc)), h = Math.max(8, Math.round(img.naturalHeight * sc));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, w, h);
+    const d = ctx.getImageData(0, 0, w, h).data;
+    const N = w * h;
+    const gray = new Float32Array(N), sat = new Float32Array(N);
+    // 外周帯（8%）の平均色を背景色とみなす
+    const bx = Math.max(1, Math.round(w * 0.08)), by = Math.max(1, Math.round(h * 0.08));
+    let br = 0, bg = 0, bb = 0, bn = 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4, k = y * w + x;
+      const r = d[i], g = d[i + 1], b = d[i + 2];
+      gray[k] = (r * 299 + g * 587 + b * 114) / 1000;
+      sat[k] = (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
+      if (x < bx || x >= w - bx || y < by || y >= h - by) { br += r; bg += g; bb += b; bn++; }
+    }
+    br /= bn; bg /= bn; bb /= bn;
+    const colorD = new Float32Array(N), sharp = new Float32Array(N);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4, k = y * w + x;
+      colorD[k] = (Math.abs(d[i] - br) + Math.abs(d[i + 1] - bg) + Math.abs(d[i + 2] - bb)) / 765;
+      if (x > 0 && y > 0 && x < w - 1 && y < h - 1)
+        sharp[k] = Math.abs(4 * gray[k] - gray[k - 1] - gray[k + 1] - gray[k - w] - gray[k + w]) / 255;
+    }
+    const blur = (src, r) => { // 箱型ぼかし（積分画像）
+      const S = new Float64Array((w + 1) * (h + 1));
+      for (let y = 1; y <= h; y++) { let row = 0; for (let x = 1; x <= w; x++) { row += src[(y - 1) * w + (x - 1)]; S[y * (w + 1) + x] = S[(y - 1) * (w + 1) + x] + row; } }
+      const out = new Float32Array(N);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const x0 = Math.max(0, x - r), x1 = Math.min(w, x + r + 1), y0 = Math.max(0, y - r), y1 = Math.min(h, y + r + 1);
+        out[y * w + x] = (S[y1 * (w + 1) + x1] - S[y0 * (w + 1) + x1] - S[y1 * (w + 1) + x0] + S[y0 * (w + 1) + x0]) / ((x1 - x0) * (y1 - y0));
+      }
+      return out;
+    };
+    const norm = arr => { // 上位2%の値で1に正規化
+      const sorted = Float32Array.from(arr).sort();
+      const p = sorted[Math.floor(sorted.length * 0.98)] || 1e-6;
+      return arr.map(v => Math.min(1, v / p));
+    };
+    const r = Math.max(2, Math.round(Math.max(w, h) / 28));
+    const sharpN = norm(blur(sharp, r)), colorN = norm(blur(colorD, r >> 1)), satN = norm(blur(sat, r >> 1));
+    let S = new Float32Array(N);
+    const cx0 = (w - 1) / 2, cy0 = (h - 1) / 2;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const k = y * w + x;
+      const dx = (x - cx0) / cx0, dy = (y - cy0) / cy0;
+      const prior = 1 - centerBias * Math.min(1, (dx * dx + dy * dy) / 2);
+      S[k] = (0.45 * sharpN[k] + 0.35 * colorN[k] + 0.20 * satN[k]) * prior;
+    }
+    S = blur(S, r);
+    let max = 0; for (let k = 0; k < N; k++) if (S[k] > max) max = S[k];
+    if (max <= 0) return null;
+    const th = max * 0.5;
+    const px = new Float64Array(w), py = new Float64Array(h);
+    let total = 0, mx = 0, my = 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const v = S[y * w + x]; if (v < th) continue;
+      const wv = v - th;
+      px[x] += wv; py[y] += wv; total += wv; mx += wv * x; my += wv * y;
+    }
+    if (total <= 0) return null;
+    const range = (proj, len) => {
+      let acc = 0, a = 0, b = len - 1;
+      for (let i = 0; i < len; i++) { acc += proj[i]; if (acc >= total * 0.04) { a = i; break; } }
+      acc = 0;
+      for (let i = len - 1; i >= 0; i--) { acc += proj[i]; if (acc >= total * 0.04) { b = i; break; } }
+      return [a, b];
+    };
+    const [x0, x1] = range(px, w), [y0, y1] = range(py, h);
+    return { cx: (mx / total) / sc, cy: (my / total) / sc,
+      x: x0 / sc, y: y0 / sc, w: (x1 - x0 + 1) / sc, h: (y1 - y0 + 1) / sc };
+  }
+
+  // 被写体を中央に置く切り出し枠を決める
+  function subjectCrop(sub, imgW, imgH, ratio, fill, minW) {
+    const R = ratio > 0 ? ratio : imgW / imgH;
+    let ch = Math.max(sub.h / fill, sub.w / fill / R);
+    let cw = ch * R;
+    if (cw < minW) { cw = minW; ch = cw / R; }          // 出力幅より小さくなる寄り方はしない
+    const k = Math.min(1, imgW / cw, imgH / ch);          // 画像からはみ出すなら縮める
+    cw *= k; ch *= k;
+    let x = sub.cx - cw / 2, y = sub.cy - ch / 2;
+    x = Math.min(Math.max(x, sub.x + sub.w - cw), sub.x); // 被写体が枠に入る範囲で
+    y = Math.min(Math.max(y, sub.y + sub.h - ch), sub.y);
+    x = Math.min(Math.max(0, x), imgW - cw);              // 画像の中に収める
+    y = Math.min(Math.max(0, y), imgH - ch);
+    return { x: Math.round(x), y: Math.round(y), w: Math.round(cw), h: Math.round(ch) };
+  }
+
+  // 仕上がりカーブ：白は白に整え、明るさの目標まで持ち上げ、黒を浮かせて階調をやわらかく
+  function buildLUT(imgData, opt) {
+    const { data } = imgData;
+    const hist = new Uint32Array(256);
+    let n = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const l = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
+      hist[l | 0]++; n++;
+    }
+    const clip = n * 0.002;
+    let lo = 0, hi = 255, acc = 0;
+    for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc > clip) { lo = i; break; } }
+    acc = 0;
+    for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc > clip) { hi = i; break; } }
+    if (hi - lo < 32) { lo = 0; hi = 255; }
+    // 白点はきちんと白へ、黒点は3割だけ寄せる（黒を締めすぎない）
+    const lo2 = lo * 0.3, hi2 = hi;
+    const stretch = v => Math.max(0, Math.min(255, (v - lo2) * 255 / (hi2 - lo2)));
+
+    // 伸張後の平均輝度 → 目標に足りなければガンマで持ち上げる（明るい写真は触らない）
+    let mean = 0;
+    for (let i = 0; i < 256; i++) mean += hist[i] * stretch(i);
+    mean /= n;
+    let gamma = 1;
+    if (mean < opt.target) {
+      gamma = Math.log(opt.target / 255) / Math.log(Math.max(mean, 20) / 255);
+      gamma = Math.max(0.55, Math.min(1, gamma));
+    }
+
+    // やわらかさ：黒を lift まで浮かせ、白をほんの少しだけ抑える
+    const lift = 34 * opt.soft, hiDrop = 6 * opt.soft;
+    const lut = new Uint8ClampedArray(256);
+    for (let v = 0; v < 256; v++) {
+      let x = stretch(v) / 255;
+      x = Math.pow(x, gamma);
+      // 中間調をさらに少し持ち上げるS字の逆（ふんわり）
+      x = x + opt.soft * 0.10 * Math.sin(Math.PI * x);
+      let out = lift + x * (255 - lift - hiDrop);
+      lut[v] = v + (out - v) * opt.amount;
+    }
+    return { lut, lo, hi, gamma, mean, lift };
+  }
+
+  // 段階的に縮小して滑らかなリサイズ
+  function resizeTo(src, sx, sy, sw, sh, dw, dh) {
+    let cur = src, cx = sx, cy = sy, cw = sw, ch = sh;
+    while (cw / 2 > dw && ch / 2 > dh) {
+      const c = document.createElement('canvas');
+      c.width = Math.round(cw / 2); c.height = Math.round(ch / 2);
+      const ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(cur, cx, cy, cw, ch, 0, 0, c.width, c.height);
+      cur = c; cx = 0; cy = 0; cw = c.width; ch = c.height;
+    }
+    const out = document.createElement('canvas'); out.width = dw; out.height = dh;
+    const ctx = out.getContext('2d'); ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(cur, cx, cy, cw, ch, 0, 0, dw, dh);
+    return out;
+  }
+
+  async function processItem(item, s) {
+    const img = item.img;
+    const { data: aData, scale } = analysisData(img);
+
+    const W = img.naturalWidth, H = img.naturalHeight;
+    let crop = { x: 0, y: 0, w: W, h: H };
+    let trim = null, subject = null, cropped = false;
+    if (item.manualCrop) {
+      crop = item.manualCrop; cropped = true;
+    } else if (s.cropMode === 'margin') {
+      trim = detectTrim(aData, s.trimTol, s.trimPad);
+      if (trim) { crop = { x: Math.round(trim.x / scale), y: Math.round(trim.y / scale), w: Math.round(trim.w / scale), h: Math.round(trim.h / scale) }; cropped = true; }
+    } else if (s.cropMode === 'subject') {
+      subject = detectSubject(img, s.centerBias);
+      if (subject) {
+        crop = subjectCrop(subject, W, H, s.ratio, s.fill, Math.min(W, s.width));
+        cropped = !(crop.x === 0 && crop.y === 0 && crop.w === W && crop.h === H);
+      }
+    }
+
+    let dw = s.width;
+    if (!s.upscale && crop.w < dw) dw = crop.w;
+    const dh = Math.max(1, Math.round(crop.h * dw / crop.w));
+    const canvas = resizeTo(img, crop.x, crop.y, crop.w, crop.h, dw, dh);
+
+    let levels = null;
+    if (s.levelsOn && s.levelsAmt > 0) {
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const id = ctx.getImageData(0, 0, dw, dh);
+      levels = buildLUT(id, { target: s.target, soft: s.soft, amount: s.levelsAmt });
+      const d = id.data, lut = levels.lut;
+      const sat = 1 + (s.sat - 1) * s.levelsAmt;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = lut[d[i]], g = lut[d[i + 1]], b = lut[d[i + 2]];
+        const l = (r * 299 + g * 587 + b * 114) / 1000;
+        d[i] = l + (r - l) * sat; d[i + 1] = l + (g - l) * sat; d[i + 2] = l + (b - l) * sat;
+      }
+      ctx.putImageData(id, 0, 0);
+    }
+
+    // 元画像プレビューの下地（切り出し枠はあとから重ねて描く）
+    const base = document.createElement('canvas'); base.width = aData.width; base.height = aData.height;
+    base.getContext('2d').putImageData(aData, 0, 0);
+    item.base = base; item.scale = scale;
+
+    const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', s.quality));
+    if (item.result?.url) URL.revokeObjectURL(item.result.url);
+    item.result = { blob, url: URL.createObjectURL(blob), w: dw, h: dh, crop, trim, subject, cropped, levels, upscaled: s.upscale && crop.w < s.width, tooSmall: !s.upscale && crop.w < s.width };
+  }
+
+  // ---------- 表示 ----------
+  const outName = name => name.replace(/\.[^.]+$/, '') + '_' + $('width').value + '.jpg';
+  const kb = b => (b / 1024).toFixed(0) + ' KB';
+
+  // 元画像プレビューを描く（crop は元画像のピクセル座標）
+  function drawPreview(item, cv, crop, subject) {
+    const pw = item.base.width, ph = item.base.height, sc = item.scale;
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(item.base, 0, 0);
+    if (crop) {
+      const c = { x: crop.x * sc, y: crop.y * sc, w: crop.w * sc, h: crop.h * sc };
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      ctx.fillRect(0, 0, pw, ph);
+      ctx.drawImage(item.base, c.x, c.y, c.w, c.h, c.x, c.y, c.w, c.h);
+      ctx.lineWidth = Math.max(2, pw / 300);
+      ctx.strokeStyle = '#ffffff'; ctx.strokeRect(c.x + 1, c.y + 1, c.w - 2, c.h - 2);
+      const hs = Math.max(8, pw / 45);
+      ctx.fillStyle = '#ffffff';
+      [[c.x, c.y], [c.x + c.w, c.y], [c.x, c.y + c.h], [c.x + c.w, c.y + c.h]].forEach(([x, y]) => ctx.fillRect(x - hs / 2, y - hs / 2, hs, hs));
+    }
+    if (subject) {
+      ctx.lineWidth = Math.max(1.5, pw / 400); ctx.strokeStyle = '#ffd93b';
+      ctx.strokeRect(subject.x * sc, subject.y * sc, subject.w * sc, subject.h * sc);
+    }
+  }
+
+  // 元画像プレビュー上でのドラッグ操作：枠の中をドラッグで移動、角で大きさ変更、外側から新しい枠を描く
+  function attachEditor(item, cv) {
+    const W = item.img.naturalWidth, H = item.img.naturalHeight;
+    const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+    let drag = null;
+    const toImg = e => { const r = cv.getBoundingClientRect(); return { x: clamp((e.clientX - r.left) * W / r.width, 0, W), y: clamp((e.clientY - r.top) * H / r.height, 0, H) }; };
+    const current = () => item.manualCrop || (item.result?.cropped ? item.result.crop : null);
+    const ratio = () => +$('ratio').value;
+    const fit = (ax, ay, px, py) => { // 固定点(ax,ay)と自由点(px,py)から枠を作る（縦横比固定あり）
+      let w = px - ax, h = py - ay;
+      const R = ratio();
+      if (R > 0) { const sw = Math.sign(w) || 1, sh = Math.sign(h) || 1; if (Math.abs(w) / R > Math.abs(h)) h = sh * Math.abs(w) / R; else w = sw * Math.abs(h) * R;
+        // 画像からはみ出すなら縮める
+        const k = Math.min(1, w > 0 ? (W - ax) / w : ax / -w, h > 0 ? (H - ay) / h : ay / -h); w *= k; h *= k; }
+      return { x: Math.round(Math.min(ax, ax + w)), y: Math.round(Math.min(ay, ay + h)), w: Math.round(Math.abs(w)), h: Math.round(Math.abs(h)) };
+    };
+    cv.addEventListener('pointerdown', e => {
+      if (!item.result) return;
+      e.preventDefault(); cv.setPointerCapture(e.pointerId);
+      const p = toImg(e), c = current();
+      const rect = cv.getBoundingClientRect(), tol = 14 * W / rect.width;
+      if (c) {
+        const corners = [[c.x, c.y, c.x + c.w, c.y + c.h], [c.x + c.w, c.y, c.x, c.y + c.h], [c.x, c.y + c.h, c.x + c.w, c.y], [c.x + c.w, c.y + c.h, c.x, c.y]];
+        const hit = corners.find(([x, y]) => Math.abs(p.x - x) < tol && Math.abs(p.y - y) < tol);
+        if (hit) { drag = { mode: 'resize', ax: hit[2], ay: hit[3] }; return; }
+        if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) { drag = { mode: 'move', ox: p.x - c.x, oy: p.y - c.y, w: c.w, h: c.h }; return; }
+      }
+      drag = { mode: 'draw', ax: p.x, ay: p.y };
+    });
+    cv.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const p = toImg(e);
+      let c;
+      if (drag.mode === 'move') c = { x: Math.round(clamp(p.x - drag.ox, 0, W - drag.w)), y: Math.round(clamp(p.y - drag.oy, 0, H - drag.h)), w: drag.w, h: drag.h };
+      else c = fit(drag.ax, drag.ay, p.x, p.y);
+      drag.c = c;
+      drawPreview(item, cv, c, null);
+    });
+    const finish = async e => {
+      if (!drag) return;
+      const c = drag.c; drag = null;
+      if (!c || c.w < 16 || c.h < 16) { drawPreview(item, cv, current(), item.manualCrop ? null : item.result?.subject); return; }
+      item.manualCrop = c;
+      await processItem(item, settings()); render();
+    };
+    cv.addEventListener('pointerup', finish);
+    cv.addEventListener('pointercancel', finish);
+  }
+
+  function render() {
+    const list = $('list');
+    list.innerHTML = '';
+    if (!items.length) { list.innerHTML = '<p class="empty">画像を入れると、ここに処理前後が並びます。</p>'; }
+    items.forEach((item, idx) => {
+      const r = item.result;
+      const el = document.createElement('div'); el.className = 'item';
+      el.innerHTML = `
+        <div class="frame edit"><span class="tag">元 ${item.img.naturalWidth}×${item.img.naturalHeight}</span>
+          ${r ? '<span class="help">ドラッグで範囲を選択</span>' : `<img src="${item.img.src}" alt="">`}
+        </div>
+        <div class="frame"><span class="tag">出力 ${r ? r.w + '×' + r.h : '…'}</span>${r ? `<img src="${r.url}" alt="">` : ''}</div>
+        <div class="meta">
+          <div class="name">${outName(item.name)}</div>
+          ${r ? `<dl>
+            <dt>切り出し</dt><dd>${item.manualCrop ? `${r.crop.w}×${r.crop.h}（手動）` : r.cropped ? `${r.crop.w}×${r.crop.h}` : (r.subject ? '全体のまま（被写体が大きいため）' : 'なし')}</dd>
+            <dt>明るさ</dt><dd>${r.levels ? `平均${r.levels.mean.toFixed(0)}${r.levels.gamma < 1 ? ` → 持ち上げ ${r.levels.gamma.toFixed(2)}` : '（十分明るいのでそのまま）'}` : '補正なし'}</dd>
+            <dt>ファイル</dt><dd>${kb(r.blob.size)} · ${kb(item.file.size)} から</dd>
+          </dl>
+          ${r.tooSmall ? '<div class="note">切り出し範囲が指定幅より小さいため、その幅のまま書き出しました。拡大したい場合は左の「小さい画像も横幅まで拡大する」を有効にしてください。</div>' : ''}
+          ${r.upscaled ? '<div class="note">元画像より拡大しています。ぼやけて見える場合があります。</div>' : ''}
+          <div class="row2">
+            ${item.manualCrop ? `<button data-auto="${idx}">自動に戻す</button>` : ''}
+            <button data-dl="${idx}">ダウンロード</button>
+          </div>` : '<div>処理中…</div>'}
+        </div>`;
+      list.appendChild(el);
+      if (r) {
+        const cv = document.createElement('canvas'); cv.width = item.base.width; cv.height = item.base.height;
+        el.querySelector('.frame.edit').appendChild(cv);
+        drawPreview(item, cv, r.cropped ? r.crop : null, item.manualCrop ? null : r.subject);
+        attachEditor(item, cv);
+      }
+    });
+    const done = items.filter(i => i.result).length;
+    $('count').textContent = items.length ? `${items.length} 枚（処理済み ${done}）` : 'まだ画像がありません';
+    $('zip').disabled = $('rerun').disabled = $('clear').disabled = !items.length;
+  }
+
+  function download(blob, name) {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  // ---------- イベント ----------
+  async function addFiles(files) {
+    const s = settings();
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue;
+      try {
+        const img = await loadImage(file);
+        const item = { file, img, name: file.name, result: null };
+        items.push(item); render();
+        await processItem(item, s); render();
+      } catch (e) {
+        alert(`${file.name}: ${e.message}`);
+      }
+    }
+  }
+
+  const drop = $('drop');
+  $('file').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
+  drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } });
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => addFiles([...e.dataTransfer.files]));
+  document.addEventListener('paste', e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) addFiles(fs); });
+
+  $('list').addEventListener('click', async e => {
+    const dl = e.target.closest('[data-dl]');
+    if (dl) { const item = items[+dl.dataset.dl]; download(item.result.blob, outName(item.name)); return; }
+    const au = e.target.closest('[data-auto]');
+    if (au) { const item = items[+au.dataset.auto]; item.manualCrop = null; await processItem(item, settings()); render(); }
+  });
+
+  $('rerun').addEventListener('click', async () => {
+    const s = settings();
+    for (const item of items) { await processItem(item, s); render(); }
+  });
+
+  $('clear').addEventListener('click', () => {
+    items.forEach(i => { URL.revokeObjectURL(i.img.src); if (i.result?.url) URL.revokeObjectURL(i.result.url); });
+    items.length = 0; render();
+  });
+
+  $('zip').addEventListener('click', async () => {
+    const ready = items.filter(i => i.result);
+    if (!ready.length) return;
+    if (typeof JSZip === 'undefined') {
+      // オフラインなどでJSZipが読めなかった場合は1枚ずつ落とす
+      for (const i of ready) { download(i.result.blob, outName(i.name)); await new Promise(r => setTimeout(r, 300)); }
+      return;
+    }
+    const z = new JSZip();
+    ready.forEach(i => z.file(outName(i.name), i.result.blob));
+    const blob = await z.generateAsync({ type: 'blob' });
+    download(blob, 'images_' + $('width').value + 'px.zip');
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
